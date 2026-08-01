@@ -1,0 +1,470 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ---------- Auth.js (NextAuth) required models ----------
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------- Core domain models ----------
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  phone         String?
+  nameChangedAt DateTime? // last time `name` was changed; used to enforce a once-per-month limit
+  password      String? // null for OAuth-only accounts
+  role          Role      @default(USER)
+  walletBalance Int       @default(0) // in BDT (Taka)
+  isBlocked     Boolean   @default(false)
+  blockedUntil  DateTime? // null while isBlocked = permanent block; future date = temporary
+  blockReason   String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  referralCode         String? @unique
+  referredById         String?
+  referralBonusGranted Boolean @default(false) // set once this user's first completed order has been evaluated for a referral bonus
+
+  signupSource      String? // "Google" | "Facebook" | "Direct" | "Other" — captured once at signup via Referer header
+  lastLoginAt       DateTime?
+  lastLoginLocation String? // best-effort IP geolocation, e.g. "Dhaka, Bangladesh"
+  loginCount        Int       @default(0) // all-time login count — never pruned, unlike loginLogs
+
+  accounts             Account[]
+  sessions             Session[]
+  orders               Order[]
+  walletTransactions   WalletTransaction[]
+  reviewedTransactions WalletTransaction[] @relation("ReviewedBy")
+  reviewedOrders       Order[]             @relation("OrderReviewedBy")
+  referredBy           User?               @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals            User[]              @relation("Referrals")
+  blogComments         BlogComment[]
+  blogLikes            BlogLike[]
+  blogCommentLikes     BlogCommentLike[]
+  notifications        Notification[]      @relation("UserNotifications")
+  sentNotifications    Notification[]      @relation("ActorNotifications")
+  loginLogs            LoginLog[]
+}
+
+// Per-login activity trail — pruned in application code (see recordLoginActivity)
+// so at most the most recent 20 rows per user are ever kept.
+model LoginLog {
+  id        String   @id @default(cuid())
+  userId    String
+  provider  String // "credentials" | "google"
+  ip        String
+  location  String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+// Temporary IP blocks for guest (unauthenticated) abuse — script/SQL/shell
+// injection attempts or spam from someone with no account to block directly.
+model IpBlock {
+  id           String   @id @default(cuid())
+  ip           String   @unique
+  reason       String?  @db.Text
+  blockedUntil DateTime
+  createdAt    DateTime @default(now())
+}
+
+enum ProductType {
+  NORMAL
+  EXTERNAL_LINK
+}
+
+// Admin-managed replacement for the old ProductSection enum (SPECIAL_OFFER/FREE_FIRE)
+// — lets an admin add/rename/reorder/delete sections instead of them being hardcoded.
+model Section {
+  id        Int      @id @default(autoincrement())
+  name      String
+  slug      String   @unique
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  products Product[]
+}
+
+model Product {
+  id          Int         @id @default(autoincrement())
+  name        String
+  slug        String      @unique
+  image       String
+  sectionId   Int
+  type        ProductType @default(NORMAL)
+  externalUrl String? // used when type = EXTERNAL_LINK (e.g. Telegram tournament link)
+  category    String      @default("Free Fire")
+  description String?     @db.Text
+  rules       Json? // string[]
+  isActive    Boolean     @default(true)
+  stockOut    Boolean     @default(false)
+  sortOrder   Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  section         Section          @relation(fields: [sectionId], references: [id])
+  rechargeOptions RechargeOption[]
+  orders          Order[]
+
+  @@index([sectionId, isActive, sortOrder])
+}
+
+model RechargeOption {
+  id        Int     @id @default(autoincrement())
+  productId Int
+  label     String
+  price     Int // in BDT
+  stock     Int? // remaining units; null = unlimited (not stock-managed)
+  denom     String? // Unipin denom recipe for this option — comma-separated (e.g. "4,4,5") when the pack is fulfilled from multiple smaller vouchers
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orders  Order[]
+
+  @@index([productId])
+}
+
+enum PaymentMethod {
+  WALLET
+  BKASH
+  NAGAD
+  ROCKET
+}
+
+enum OrderStatus {
+  PENDING
+  APPROVED
+  RUNNING // payment approved, Unipin code(s) claimed and topup in flight — awaiting delivery confirmation
+  REJECTED
+  DELIVERED
+  CANCELLED
+}
+
+model Order {
+  id               String        @id @default(cuid())
+  orderNumber      String        @unique // legacy internal code, kept for backward compatibility — no longer shown in UI
+  orderSerial      Int           @unique @default(autoincrement()) // user-facing sequential number, shown as #1, #2, ...
+  userId           String? // null for guest orders (see guestName/guestPhone)
+  productId        Int
+  rechargeOptionId Int
+  playerId         String
+  playerName       String?
+  guestName        String? // set when userId is null (guest checkout)
+  guestPhone       String? // set when userId is null (guest checkout)
+  amount           Int // in BDT
+  paymentMethod    PaymentMethod
+  transactionId    String?       @unique // manual gateway trx id, when not paid by wallet
+  status           OrderStatus   @default(PENDING)
+  adminNote        String?       @db.Text
+  reviewedById     String?
+  reviewedAt       DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  user                User?          @relation(fields: [userId], references: [id])
+  product             Product        @relation(fields: [productId], references: [id])
+  rechargeOption      RechargeOption @relation(fields: [rechargeOptionId], references: [id])
+  reviewedBy          User?          @relation("OrderReviewedBy", fields: [reviewedById], references: [id])
+  redeemedUnipinCodes UnipinCode[]
+  apiCallLogs         ApiCallLog[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+enum UnipinCodeStatus {
+  UNUSED
+  USED
+}
+
+// Manually stocked (and, in future, API-fetched) Unipin voucher codes, pooled by
+// `denom` — a plain elementary denomination value shared across any RechargeOption
+// whose comma-separated `denom` recipe references it. Consumed one-per-token when
+// an order is approved (see updateOrderStatusAction).
+model UnipinCode {
+  id             String           @id @default(cuid())
+  denom          String
+  code           String           @unique
+  status         UnipinCodeStatus @default(UNUSED)
+  source         String           @default("MANUAL") // "MANUAL" now; an ApiSetting name once fetched automatically
+  usedAt         DateTime?
+  usedForOrderId String?
+  createdAt      DateTime         @default(now())
+
+  usedForOrder Order? @relation(fields: [usedForOrderId], references: [id], onDelete: SetNull)
+
+  @@index([denom, status])
+  @@index([usedForOrderId])
+}
+
+enum ApiSettingType {
+  UNIPIN
+  GARENA_SHELL
+  OTHER
+}
+
+// Registry of external top-up API credentials, prepared ahead of wiring up
+// live automation (see UnipinCode.source).
+model ApiSetting {
+  id        Int            @id @default(autoincrement())
+  name      String
+  type      ApiSettingType @default(OTHER)
+  apiKey    String?        @db.Text
+  apiSecret String?        @db.Text
+  endpoint  String?
+  isActive  Boolean        @default(true)
+  createdAt DateTime       @default(now())
+
+  apiCallLogs ApiCallLog[]
+}
+
+// Raw request/response trail for every external API call made while fulfilling
+// an order — kept for debugging when a callback is missing or a code purchase
+// fails, per an order stuck in RUNNING. Written by the future automation code
+// via logApiCall() (src/lib/api-log.ts); no live caller exists yet.
+model ApiCallLog {
+  id           String   @id @default(cuid())
+  orderId      String?
+  apiSettingId Int?
+  denom        String?
+  requestBody  String?  @db.Text
+  responseBody String?  @db.Text
+  statusCode   Int?
+  success      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  order      Order?      @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  apiSetting ApiSetting? @relation(fields: [apiSettingId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+}
+
+// Manual login vault for Garena Shell reseller accounts (no public API —
+// staff log in by hand), separate from the automatable ApiSetting entries.
+model GarenaShellAccount {
+  id        String   @id @default(cuid())
+  label     String
+  accountId String
+  password  String
+  code      String?
+  server    String?
+  createdAt DateTime @default(now())
+}
+
+enum WalletTransactionType {
+  DEPOSIT
+  PURCHASE
+  REFUND
+  ADMIN_ADJUST
+  REFERRAL_BONUS
+}
+
+enum WalletTransactionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model WalletTransaction {
+  id            String                  @id @default(cuid())
+  userId        String
+  type          WalletTransactionType
+  method        PaymentMethod           @default(WALLET)
+  amount        Int // in BDT, always positive; sign implied by type
+  transactionId String? // bKash/Nagad/Rocket trx id submitted by user
+  status        WalletTransactionStatus @default(PENDING)
+  note          String?                 @db.Text
+  reviewedById  String?
+  reviewedAt    DateTime?
+  createdAt     DateTime                @default(now())
+
+  user       User  @relation(fields: [userId], references: [id])
+  reviewedBy User? @relation("ReviewedBy", fields: [reviewedById], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Banner {
+  id        Int      @id @default(autoincrement())
+  image     String
+  link      String?
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Notice {
+  id        Int      @id @default(autoincrement())
+  message   String   @db.Text
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model BlogPost {
+  id              Int      @id @default(autoincrement())
+  title           String
+  slug            String   @unique
+  excerpt         String?  @db.Text
+  content         String   @db.Text // Markdown
+  coverImage      String?
+  metaTitle       String?
+  metaDescription String?  @db.Text
+  metaKeywords    String?  @db.Text
+  isPublished     Boolean  @default(true)
+  publishedAt     DateTime @default(now())
+  viewCount       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  comments BlogComment[]
+  likes    BlogLike[]
+
+  @@index([isPublished, publishedAt])
+}
+
+model BlogComment {
+  id        String   @id @default(cuid())
+  postId    Int
+  userId    String
+  parentId  String? // set for a reply to a top-level comment (one level deep)
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  post    BlogPost          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent  BlogComment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies BlogComment[]     @relation("CommentReplies")
+  likes   BlogCommentLike[]
+
+  @@index([postId])
+  @@index([parentId])
+}
+
+model BlogCommentLike {
+  id        String   @id @default(cuid())
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  comment BlogComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@index([commentId])
+}
+
+model BlogLike {
+  id        String   @id @default(cuid())
+  postId    Int
+  userId    String
+  createdAt DateTime @default(now())
+
+  post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId])
+}
+
+enum NotificationType {
+  COMMENT_REPLY
+  COMMENT_LIKE
+  ORDER_COMPLETED
+  ORDER_NOTE
+  ADMIN_ANNOUNCEMENT
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String // recipient
+  actorId   String? // who triggered it (null for system-generated ones)
+  type      NotificationType
+  message   String           @db.Text // plain text only — rendered as JSX text, never as HTML
+  link      String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user  User  @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  actor User? @relation("ActorNotifications", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+}
+
+model SiteSetting {
+  id                   Int     @id @default(1)
+  siteName             String  @default("Uc Ghor")
+  tagline              String  @default("Largest TopUp Site In Bangladesh")
+  metaTitle            String? @db.Text
+  metaDescription      String? @db.Text
+  metaKeywords         String? @db.Text
+  ogImage              String?
+  favicon              String?
+  referralBonusPercent Float   @default(1.5) // % of first order amount credited to both referrer and referred user's wallet
+  whatsappNumber       String  @default("01343053411")
+  telegramLink         String  @default("https://t.me/+K3PmqW02YCI2OGRl")
+  facebookLink         String?
+  contactEmail         String  @default("support@ucghor.com")
+  bkashNumber          String  @default("01343053411")
+  nagadNumber          String  @default("01343053411")
+  rocketNumber         String  @default("01343053411")
+  bkashIcon            String?
+  nagadIcon            String?
+  rocketIcon           String?
+  walletIcon           String?
+  allowGuestOrders     Boolean @default(false)
+}

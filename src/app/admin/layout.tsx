@@ -1,0 +1,50 @@
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { AdminNav } from "@/components/admin-nav";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
+
+function buildNav(pendingOrders: number, pendingWalletRequests: number) {
+  return [
+    { href: "/admin", label: "Dashboard", badge: 0 },
+    { href: "/admin/orders", label: "Orders", badge: pendingOrders },
+    { href: "/admin/wallet-requests", label: "Wallet Requests", badge: pendingWalletRequests },
+    { href: "/admin/users", label: "Users", badge: 0 },
+    { href: "/admin/products", label: "Products", badge: 0 },
+    { href: "/admin/unipin", label: "Unipin", badge: 0 },
+    { href: "/admin/shell", label: "Garena Shell", badge: 0 },
+    { href: "/admin/api-settings", label: "API Settings", badge: 0 },
+    { href: "/admin/sections", label: "Sections", badge: 0 },
+    { href: "/admin/blog", label: "Blog", badge: 0 },
+    { href: "/admin/banners", label: "Banners", badge: 0 },
+    { href: "/admin/notices", label: "Notices", badge: 0 },
+    { href: "/admin/settings", label: "Settings", badge: 0 },
+  ];
+}
+
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth();
+  if (session?.user?.role !== "ADMIN") {
+    redirect("/dashboard");
+  }
+
+  const [pendingOrders, pendingWalletRequests] = await Promise.all([
+    prisma.order.count({ where: { status: "PENDING" } }),
+    prisma.walletTransaction.count({ where: { type: "DEPOSIT", status: "PENDING" } }),
+  ]);
+
+  const NAV = buildNav(pendingOrders, pendingWalletRequests);
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="grid gap-6 md:grid-cols-[200px_1fr]">
+        <AdminNav items={NAV} />
+        <div className="min-w-0">{children}</div>
+      </div>
+    </div>
+  );
+}

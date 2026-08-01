@@ -1,0 +1,32 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+:root {
+  --background: #edf4ff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-primary-50: #eafff0;
+  --color-primary-100: #d3ffe0;
+  --color-primary-500: #14d72b;
+  --color-primary-600: #10b323;
+  --color-primary-700: #0c8f1c;
+
+  --color-secondary-900: #0f3460;
+
+  --font-sans: var(--font-body);
+  --font-primary: var(--font-heading);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+html {
+  scroll-behavior: smooth;
+}
