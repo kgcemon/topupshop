@@ -3,6 +3,18 @@ import { claimUnipinCodes } from "@/lib/unipin-fulfillment";
 import { redeemUnipinCode } from "@/lib/unipin-client";
 import type { FulfillmentResult } from "@/lib/order-fulfillment";
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+// Callback URL UniPin posts the final redeem status to (see
+// src/app/api/unipin/callback/route.ts). `secret` is the active UNIPIN
+// ApiSetting's apiSecret, echoed back by UniPin on every call — without it,
+// anyone who guessed an orderSerial could POST a fake "success" and get a
+// free order marked complete.
+function buildCallbackUrl(apiSecret: string | null): string {
+  const params = new URLSearchParams({ secret: apiSecret ?? "" });
+  return `${SITE_URL}/api/unipin/callback?${params.toString()}`;
+}
+
 // Ensures a fulfillment job row exists for this order. `orderId` is unique on
 // FulfillmentJob, so calling this any number of times for the same order —
 // a fresh approval, a retried approval, a retried request — creates at most
@@ -102,6 +114,8 @@ export async function processUnipinFulfillmentJob(orderId: string): Promise<Fulf
         code: code.code,
         playerId: order.playerId,
         orderId: order.id,
+        orderSerial: order.orderSerial,
+        callbackUrl: buildCallbackUrl(apiSetting.apiSecret),
       });
 
       if (result.success) {
@@ -116,7 +130,13 @@ export async function processUnipinFulfillmentJob(orderId: string): Promise<Fulf
       return { status: "fulfilled" };
     }
 
+    // Surface the UniPin failure reason (e.g. "Invalid Player ID") directly on
+    // the order so an admin sees why it's stuck without digging into API logs.
+    // The job stays FAILED — order status is left untouched (still APPROVED)
+    // so it can be retried once the admin fixes whatever's wrong and
+    // resubmits the approval.
     await prisma.fulfillmentJob.update({ where: { id: job.id }, data: { status: "FAILED", lastError } });
+    await prisma.order.update({ where: { id: orderId }, data: { adminNote: lastError } });
     return { status: "failed", error: lastError };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

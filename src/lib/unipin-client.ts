@@ -2,12 +2,21 @@ import { logApiCall } from "@/lib/api-log";
 
 type RedeemResult = { success: true } | { success: false; error: string };
 
+// Fixed Telegram bot id the UniPin reseller API expects on every redeem
+// request — not a secret, just a routing id for their own notifications.
+const UNIPIN_TG_BOT_ID = "701657976";
+
 // Submits an already-owned UniPin code (claimed from local stock — see
 // unipin-fulfillment.ts) to be applied to a player's account. This never
 // purchases/generates a new code; it only redeems one we already hold.
-// The header-based auth and the exact "did it succeed" check on the JSON
-// body are a best-effort guess pending the real Unipin API spec — verify
-// against ApiCallLog / your test endpoint and adjust here once confirmed.
+// Confirmed request/response contract:
+//   request:  { playerid, pacakge, code, orderid, url, tgbotid, ourstock }
+//   success:  { status: "success", content, nickname, orderid }
+//   failure:  { status: "failed", content, orderid, shell_balance, playerid }
+// Some UniPin deployments answer this synchronously; others only resolve
+// via the `url` callback (see src/app/api/unipin/callback/route.ts), which
+// applies the exact same success/failure outcome — whichever arrives first
+// (or both) is handled idempotently.
 export async function redeemUnipinCode(params: {
   apiSettingId: number;
   endpoint: string;
@@ -17,8 +26,18 @@ export async function redeemUnipinCode(params: {
   code: string;
   playerId: string;
   orderId: string;
+  orderSerial: number;
+  callbackUrl: string;
 }): Promise<RedeemResult> {
-  const body = { playerid: params.playerId, denom: params.denom, unipincode: params.code };
+  const body = {
+    playerid: params.playerId,
+    pacakge: params.denom,
+    code: params.code,
+    orderid: params.orderSerial,
+    url: params.callbackUrl,
+    tgbotid: UNIPIN_TG_BOT_ID,
+    ourstock: 1,
+  };
   const requestBody = JSON.stringify(body);
 
   let response: Response;
@@ -71,36 +90,29 @@ export async function redeemUnipinCode(params: {
   return result;
 }
 
-// A 2xx HTTP status is treated as success unless the body explicitly says
-// otherwise (an explicit `success: false`, or a `status` field that reads
-// like a failure) — the real UniPin redeem API's exact success/failure
-// contract is unconfirmed, so this errs toward trusting the HTTP status.
+// Matches the confirmed `status: "success" | "failed"` contract exactly —
+// an empty body, unparseable JSON, or any other `status` value is treated as
+// a failure rather than optimistically assumed to have succeeded, since a
+// wrongly-assumed success would mark a code redeemed (and the order running)
+// without the player ever actually receiving it.
 function parseRedeemResponse(text: string): RedeemResult {
-  if (!text) return { success: true };
+  if (!text) return { success: false, error: "UniPin থেকে খালি response এসেছে" };
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch {
-    return { success: true };
+    return { success: false, error: "UniPin response পার্স করা যায়নি" };
   }
 
   if (parsed && typeof parsed === "object") {
     const obj = parsed as Record<string, unknown>;
-    if (obj.success === false) {
-      return { success: false, error: firstString(obj.error, obj.message) ?? "API reported failure" };
-    }
-    if (typeof obj.status === "string" && /fail|error/i.test(obj.status)) {
-      return { success: false, error: firstString(obj.message, obj.status) ?? obj.status };
+    if (obj.status === "success") return { success: true };
+    if (obj.status === "failed") {
+      const content = typeof obj.content === "string" && obj.content ? obj.content : "UniPin ব্যর্থতা রিপোর্ট করেছে";
+      return { success: false, error: content };
     }
   }
 
-  return { success: true };
-}
-
-function firstString(...values: unknown[]): string | undefined {
-  for (const value of values) {
-    if (typeof value === "string" && value) return value;
-  }
-  return undefined;
+  return { success: false, error: "UniPin থেকে অপ্রত্যাশিত response এসেছে" };
 }
