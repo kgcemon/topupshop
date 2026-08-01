@@ -1,17 +1,25 @@
 import { prisma } from "@/lib/prisma";
-import { getDhakaDayRange } from "@/lib/utils";
+import { getDhakaDayRange, formatOrderNumber } from "@/lib/utils";
 import { CopyButton } from "@/components/copy-button";
 import { addUnipinCodesAction, deleteUnipinCodeAction } from "@/lib/actions/unipin-actions";
 
 export default async function AdminUnipinPage({
   searchParams,
 }: {
-  searchParams: Promise<{ added?: string; skipped?: string }>;
+  searchParams: Promise<{
+    added?: string;
+    skipped?: string;
+    invalid?: string;
+    dupCodes?: string;
+    invalidCodes?: string;
+    code?: string;
+  }>;
 }) {
-  const { added, skipped } = await searchParams;
+  const { added, skipped, invalid, dupCodes, invalidCodes, code: codeQueryRaw } = await searchParams;
+  const codeQuery = (codeQueryRaw ?? "").trim();
   const today = getDhakaDayRange(0);
 
-  const [optionsWithDenom, statusCounts, usedTodayCounts, unusedCodes] = await Promise.all([
+  const [optionsWithDenom, statusCounts, usedTodayCounts, unusedCodes, codeMatches] = await Promise.all([
     prisma.rechargeOption.findMany({
       where: { denom: { not: null } },
       select: { denom: true, label: true, product: { select: { name: true } } },
@@ -28,7 +36,40 @@ export default async function AdminUnipinPage({
       select: { id: true, code: true, denom: true, createdAt: true },
       take: 1000,
     }),
+    codeQuery
+      ? prisma.unipinCode.findMany({
+          where: { code: { contains: codeQuery } },
+          orderBy: { createdAt: "desc" },
+          take: 50,
+          include: {
+            usedForOrder: { include: { product: true, rechargeOption: true } },
+          },
+        })
+      : Promise.resolve([]),
   ]);
+
+  // Which UniPin API call(s) touched each matched code — the log doesn't
+  // reference a specific UnipinCode row (only order + denom), so this is an
+  // order+denom match rather than a guaranteed 1:1 with the code; for the
+  // common case of one code per denom per order it's exact.
+  const codeOrderIds = [
+    ...new Set(codeMatches.map((c) => c.usedForOrderId).filter((id): id is string => Boolean(id))),
+  ];
+  const codeApiLogs = codeOrderIds.length
+    ? await prisma.apiCallLog.findMany({
+        where: { orderId: { in: codeOrderIds }, deliveryMethod: "UNIPIN" },
+        orderBy: { createdAt: "desc" },
+        include: { apiSetting: { select: { name: true } } },
+      })
+    : [];
+  const apiLogsByOrderDenom = new Map<string, typeof codeApiLogs>();
+  for (const log of codeApiLogs) {
+    if (!log.orderId || !log.denom) continue;
+    const key = `${log.orderId}:${log.denom}`;
+    const list = apiLogsByOrderDenom.get(key) ?? [];
+    list.push(log);
+    apiLogsByOrderDenom.set(key, list);
+  }
 
   // Every denom token referenced by any product's recipe, plus any denom that
   // already has codes stocked (covers pre-stocking ahead of wiring a product).
@@ -93,9 +134,20 @@ export default async function AdminUnipinPage({
         <h1 className="mb-3 text-lg font-bold">Unipin কোড ম্যানেজমেন্ট</h1>
 
         {added !== undefined && (
-          <div className="mb-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-xs font-semibold text-green-700">
-            {added} টি কোড যোগ হয়েছে
-            {Number(skipped) > 0 ? ` · ${skipped} টি ডুপ্লিকেট বাদ দেওয়া হয়েছে` : ""}
+          <div className="mb-4 space-y-1.5 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-xs font-semibold text-green-700">
+            <p>
+              {added} টি কোড যোগ হয়েছে
+              {Number(skipped) > 0 ? ` · ${skipped} টি ডুপ্লিকেট বাদ দেওয়া হয়েছে` : ""}
+              {Number(invalid) > 0
+                ? ` · ${invalid} টি ভুল ফরম্যাটের কারণে বাদ দেওয়া হয়েছে (শুধু UPBD/BDMB প্রিফিক্স সাপোর্টেড)`
+                : ""}
+            </p>
+            {dupCodes && (
+              <p className="font-mono text-[10px] font-normal text-orange-700">ডুপ্লিকেট: {dupCodes}</p>
+            )}
+            {invalidCodes && (
+              <p className="font-mono text-[10px] font-normal text-red-700">ভুল ফরম্যাট: {invalidCodes}</p>
+            )}
           </div>
         )}
 
@@ -107,6 +159,145 @@ export default async function AdminUnipinPage({
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-6">
+        <h2 className="mb-3 text-sm font-bold text-gray-700">Unipin কোড সার্চ</h2>
+        <form className="mb-4 flex flex-wrap gap-2">
+          <input
+            type="text"
+            name="code"
+            defaultValue={codeQuery}
+            placeholder="পুরো বা আংশিক কোড লিখে সার্চ করুন..."
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono sm:max-w-sm"
+          />
+          <button
+            type="submit"
+            className="rounded-md bg-secondary-900 px-3 py-1.5 text-xs font-bold text-white hover:opacity-90"
+          >
+            সার্চ
+          </button>
+        </form>
+
+        {codeQuery &&
+          (codeMatches.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-gray-300 py-8 text-center text-sm text-gray-500">
+              কোনো কোড পাওয়া যায়নি।
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {codeMatches.map((match) => {
+                const logs = match.usedForOrderId
+                  ? (apiLogsByOrderDenom.get(`${match.usedForOrderId}:${match.denom}`) ?? [])
+                  : [];
+                return (
+                  <div key={match.id} className="rounded-lg border border-gray-200 p-3 text-sm">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <p className="truncate font-mono font-bold text-gray-900">{match.code}</p>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            match.status === "USED" ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-700"
+                          }`}
+                        >
+                          {match.status}
+                        </span>
+                        {match.redeemedAt && (
+                          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                            API Redeemed
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-1 text-[11px] text-gray-600 sm:grid-cols-2">
+                      <p>
+                        Denom: <span className="font-semibold">{match.denom}</span>
+                      </p>
+                      <p>
+                        Source: <span className="font-semibold">{match.source}</span>
+                      </p>
+                      <p>
+                        যোগ হয়েছে:{" "}
+                        {new Date(match.createdAt).toLocaleString("bn-BD", { dateStyle: "medium", timeStyle: "short" })}
+                      </p>
+                      {match.usedAt && (
+                        <p>
+                          Used at:{" "}
+                          {new Date(match.usedAt).toLocaleString("bn-BD", { dateStyle: "medium", timeStyle: "short" })}
+                        </p>
+                      )}
+                      {match.redeemedAt && (
+                        <p>
+                          Redeemed at:{" "}
+                          {new Date(match.redeemedAt).toLocaleString("bn-BD", {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })}
+                        </p>
+                      )}
+                    </div>
+
+                    {match.usedForOrder && (
+                      <div className="mt-2 rounded-md border border-primary-100 bg-primary-50 px-3 py-2 text-[11px]">
+                        <p className="font-bold text-primary-700">
+                          অর্ডার {formatOrderNumber(match.usedForOrder.orderSerial)} —{" "}
+                          {match.usedForOrder.product.name} ({match.usedForOrder.rechargeOption.label})
+                        </p>
+                        <p className="text-gray-600">
+                          Player ID: {match.usedForOrder.playerId} · অর্ডার স্ট্যাটাস: {match.usedForOrder.status}
+                        </p>
+                      </div>
+                    )}
+
+                    {logs.length > 0 && (
+                      <details className="mt-2 rounded-md border border-gray-200">
+                        <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-bold text-gray-600">
+                          API Call Log ({logs.length})
+                        </summary>
+                        <div className="space-y-2 border-t border-gray-100 p-3">
+                          {logs.map((log) => (
+                            <div key={log.id} className="rounded-md bg-gray-50 p-2 text-[11px]">
+                              <div className="mb-1 flex flex-wrap items-center gap-2">
+                                <span
+                                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                    log.success ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                                  }`}
+                                >
+                                  {log.success ? "SUCCESS" : "FAILED"}
+                                </span>
+                                {log.apiSetting && <span className="font-semibold">{log.apiSetting.name}</span>}
+                                {log.statusCode !== null && <span>HTTP {log.statusCode}</span>}
+                                <span className="text-gray-500">
+                                  {new Date(log.createdAt).toLocaleString("bn-BD", {
+                                    dateStyle: "medium",
+                                    timeStyle: "short",
+                                  })}
+                                </span>
+                              </div>
+                              {log.errorMessage && (
+                                <p className="mb-1 font-semibold text-red-700">Error: {log.errorMessage}</p>
+                              )}
+                              {log.requestBody && (
+                                <pre className="mb-1 max-h-32 overflow-auto rounded bg-white p-1.5 font-mono text-[10px] whitespace-pre-wrap">
+                                  {log.requestBody}
+                                </pre>
+                              )}
+                              {log.responseBody && (
+                                <pre className="max-h-32 overflow-auto rounded bg-white p-1.5 font-mono text-[10px] whitespace-pre-wrap">
+                                  {log.responseBody}
+                                </pre>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-6">

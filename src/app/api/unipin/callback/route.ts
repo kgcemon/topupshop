@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logApiCall } from "@/lib/api-log";
-import { notifyAdmins } from "@/lib/notifications";
+import { createNotification, notifyAdmins } from "@/lib/notifications";
+import { grantFirstOrderReferralBonus } from "@/lib/referral";
 import { formatOrderNumber } from "@/lib/utils";
 
 // Receives UniPin's async redeem-status callback — the `url` we send as part
@@ -77,8 +78,35 @@ export async function POST(request: Request) {
         where: { orderId: order.id },
         data: { status: "COMPLETED" },
       });
-      if (order.status !== "RUNNING" && order.status !== "DELIVERED") {
-        await prisma.order.update({ where: { id: order.id }, data: { status: "RUNNING" } });
+
+      // UniPin confirming "success" here means the code has actually reached
+      // the player — that's the real DELIVERED moment, not just RUNNING (an
+      // HTTP 200 on the redeem call only means the request was accepted; see
+      // unipin-client.ts). Mirrors what updateOrderStatusAction does when an
+      // admin manually marks an order DELIVERED: first-order referral bonus
+      // + customer notification, both of which are safe to call unconditionally
+      // (each no-ops on a repeat/callback replay).
+      if (order.status !== "DELIVERED") {
+        await prisma.$transaction(async (tx) => {
+          await tx.order.update({ where: { id: order.id }, data: { status: "DELIVERED" } });
+
+          if (order.userId) {
+            await grantFirstOrderReferralBonus(tx, {
+              buyerId: order.userId,
+              orderId: order.id,
+              orderSerial: order.orderSerial,
+              orderAmount: order.amount,
+              reviewedById: null,
+            });
+
+            await createNotification(tx, {
+              userId: order.userId,
+              type: "ORDER_COMPLETED",
+              message: `আপনার অর্ডার ${formatOrderNumber(order.orderSerial)} সফলভাবে ডেলিভার হয়েছে!`,
+              link: "/dashboard/orders",
+            });
+          }
+        });
       }
     }
   } else {

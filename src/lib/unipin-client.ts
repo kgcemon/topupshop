@@ -68,12 +68,13 @@ export async function redeemUnipinCode(params: {
 
   const text = await response.text();
 
-  // Determine the true final outcome before logging, so `success`/
-  // `errorMessage` always reflect what actually happened rather than just
-  // the HTTP status.
-  const result: RedeemResult = !response.ok
-    ? { success: false, error: `HTTP ${response.status}` }
-    : parseRedeemResponse(text);
+  // Only the HTTP status decides the outcome here — an HTTP 200 is a
+  // success, anything else is a failure. The response body is still logged
+  // (see below) for debugging, and its `status`/`content` fields are what
+  // the async callback (src/app/api/unipin/callback/route.ts) uses instead,
+  // but this synchronous call deliberately doesn't parse or trust the body.
+  const result: RedeemResult =
+    response.status === 200 ? { success: true } : { success: false, error: `HTTP ${response.status}` };
 
   await logApiCall({
     orderId: params.orderId,
@@ -88,31 +89,4 @@ export async function redeemUnipinCode(params: {
   });
 
   return result;
-}
-
-// Matches the confirmed `status: "success" | "failed"` contract exactly —
-// an empty body, unparseable JSON, or any other `status` value is treated as
-// a failure rather than optimistically assumed to have succeeded, since a
-// wrongly-assumed success would mark a code redeemed (and the order running)
-// without the player ever actually receiving it.
-function parseRedeemResponse(text: string): RedeemResult {
-  if (!text) return { success: false, error: "UniPin থেকে খালি response এসেছে" };
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    return { success: false, error: "UniPin response পার্স করা যায়নি" };
-  }
-
-  if (parsed && typeof parsed === "object") {
-    const obj = parsed as Record<string, unknown>;
-    if (obj.status === "success") return { success: true };
-    if (obj.status === "failed") {
-      const content = typeof obj.content === "string" && obj.content ? obj.content : "UniPin ব্যর্থতা রিপোর্ট করেছে";
-      return { success: false, error: content };
-    }
-  }
-
-  return { success: false, error: "UniPin থেকে অপ্রত্যাশিত response এসেছে" };
 }
