@@ -14,9 +14,9 @@ import {
 import type { ActionState } from "@/lib/actions/auth-actions";
 import { saveUploadedImage, saveUploadedIcon } from "@/lib/upload";
 import { grantFirstOrderReferralBonus } from "@/lib/referral";
-import { createNotification, notifyAdmins } from "@/lib/notifications";
+import { createNotification } from "@/lib/notifications";
 import { formatOrderNumber } from "@/lib/utils";
-import { fulfillOrder } from "@/lib/order-fulfillment";
+import { processOrderFulfillment } from "@/lib/order-fulfillment";
 
 async function requireAdmin() {
   const session = await auth();
@@ -86,34 +86,35 @@ export async function updateOrderStatusAction(formData: FormData) {
     });
 
   // On approval, dispatch to whichever delivery method this option uses
-  // (UniPin claims/buys codes, Shell calls its own API, Manual is a no-op).
-  // Runs outside any DB transaction since it may call out to a live API.
-  // Idempotent — a second call for the same order (e.g. a retried approval)
-  // is always a safe no-op once fulfillment already succeeded once.
-  let fulfillmentIssue = false;
-  let fulfillmentError: string | undefined;
+  // (UniPin claims/buys codes, Shell calls its own API, Manual is a no-op),
+  // then either promote the order to RUNNING or alert admins — see
+  // processOrderFulfillment. Runs outside any DB transaction since it may
+  // call out to a live API. Idempotent — a second call for the same order
+  // (e.g. a retried approval) is always a safe no-op once fulfillment
+  // already succeeded once.
   if (enteringApproved) {
-    const result = await fulfillOrder(order.id, order.rechargeOption.deliveryMethod);
-    // "already-fulfilled" happens if fulfillment succeeded earlier but the
-    // status wasn't (or no longer is) RUNNING — e.g. an admin manually
-    // reverted it back to APPROVED. Either outcome means it's done, so both
-    // should land on RUNNING.
-    if (result.status === "fulfilled" || result.status === "already-fulfilled") {
-      await prisma.order.update({ where: { id: order.id }, data: { status: "RUNNING" } });
-    } else if (result.status === "insufficient" || result.status === "failed") {
-      fulfillmentIssue = true;
-      fulfillmentError = result.status === "insufficient" ? undefined : result.error;
-    }
+    await processOrderFulfillment(order.id, order.rechargeOption.deliveryMethod, {
+      orderSerial: order.orderSerial,
+      actorId: session.user.id,
+    });
   }
 
   await prisma.$transaction(async (tx) => {
     // Release any Unipin codes already claimed for this order back to stock —
-    // covers rejecting/cancelling an order that had reached RUNNING.
+    // covers rejecting/cancelling an order that had reached RUNNING. Clearing
+    // redeemedAt too is essential: a recycled code with a stale redeemedAt
+    // would silently skip the redeem API call on whichever future order
+    // claims it next (see unipin-queue.ts), never actually delivering it.
     if (enteringCancelledOrRejected) {
       await tx.unipinCode.updateMany({
         where: { usedForOrderId: order.id },
-        data: { status: "UNUSED", usedAt: null, usedForOrderId: null },
+        data: { status: "UNUSED", usedAt: null, usedForOrderId: null, redeemedAt: null },
       });
+
+      // Reset the fulfillment job too, so a future re-approval (an admin can
+      // always flip a rejected/cancelled order back to APPROVED) starts a
+      // fresh claim instead of being skipped as already COMPLETED/FAILED.
+      await tx.fulfillmentJob.deleteMany({ where: { orderId: order.id } });
     }
 
     // Restore the reserved stock unit for a rejected/cancelled order
@@ -179,17 +180,6 @@ export async function updateOrderStatusAction(formData: FormData) {
           link: "/dashboard/orders",
         });
       }
-    }
-
-    if (fulfillmentIssue) {
-      await notifyAdmins(tx, {
-        actorId: session.user.id,
-        type: "ORDER_FULFILLMENT_ISSUE",
-        message: `⚠️ অর্ডার ${formatOrderNumber(order.orderSerial)} (${order.rechargeOption.deliveryMethod}) fulfillment ব্যর্থ: ${
-          fulfillmentError ?? "পর্যাপ্ত stock/config নেই"
-        }`,
-        link: "/admin/orders?status=APPROVED",
-      });
     }
   });
 

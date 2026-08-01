@@ -1,22 +1,24 @@
 import { logApiCall } from "@/lib/api-log";
 
-type PurchaseResult =
-  | { success: true; code: string }
-  | { success: false; error: string };
+type RedeemResult = { success: true } | { success: false; error: string };
 
-// Field names (`uid`, `package`) and the header-based auth are a best-effort
-// guess pending the real Unipin API spec — verify against ApiCallLog / your
-// test endpoint and adjust here once confirmed.
-export async function purchaseUnipinCode(params: {
+// Submits an already-owned UniPin code (claimed from local stock — see
+// unipin-fulfillment.ts) to be applied to a player's account. This never
+// purchases/generates a new code; it only redeems one we already hold.
+// The header-based auth and the exact "did it succeed" check on the JSON
+// body are a best-effort guess pending the real Unipin API spec — verify
+// against ApiCallLog / your test endpoint and adjust here once confirmed.
+export async function redeemUnipinCode(params: {
   apiSettingId: number;
   endpoint: string;
   apiKey: string | null;
   apiSecret: string | null;
   denom: string;
+  code: string;
   playerId: string;
   orderId: string;
-}): Promise<PurchaseResult> {
-  const body = { uid: params.playerId, package: params.denom };
+}): Promise<RedeemResult> {
+  const body = { playerid: params.playerId, denom: params.denom, unipincode: params.code };
   const requestBody = JSON.stringify(body);
 
   let response: Response;
@@ -47,12 +49,12 @@ export async function purchaseUnipinCode(params: {
 
   const text = await response.text();
 
-  // Determine the true final outcome (including "response was OK but had no
-  // usable code") before logging, so `success`/`errorMessage` always reflect
-  // what actually happened rather than just the HTTP status.
-  const result: PurchaseResult = !response.ok
+  // Determine the true final outcome before logging, so `success`/
+  // `errorMessage` always reflect what actually happened rather than just
+  // the HTTP status.
+  const result: RedeemResult = !response.ok
     ? { success: false, error: `HTTP ${response.status}` }
-    : parseUnipinResponse(text);
+    : parseRedeemResponse(text);
 
   await logApiCall({
     orderId: params.orderId,
@@ -69,24 +71,36 @@ export async function purchaseUnipinCode(params: {
   return result;
 }
 
-function extractCode(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") return null;
-  const obj = payload as Record<string, unknown>;
-  for (const key of ["code", "pin", "voucher", "serial"]) {
-    const value = obj[key];
-    if (typeof value === "string" && value) return value;
-  }
-  if (obj.data && typeof obj.data === "object") return extractCode(obj.data);
-  return null;
-}
+// A 2xx HTTP status is treated as success unless the body explicitly says
+// otherwise (an explicit `success: false`, or a `status` field that reads
+// like a failure) — the real UniPin redeem API's exact success/failure
+// contract is unconfirmed, so this errs toward trusting the HTTP status.
+function parseRedeemResponse(text: string): RedeemResult {
+  if (!text) return { success: true };
 
-function parseUnipinResponse(text: string): PurchaseResult {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch {
-    return { success: false, error: "Response was not valid JSON" };
+    return { success: true };
   }
-  const code = extractCode(parsed);
-  return code ? { success: true, code } : { success: false, error: "No code/pin/voucher field found in response" };
+
+  if (parsed && typeof parsed === "object") {
+    const obj = parsed as Record<string, unknown>;
+    if (obj.success === false) {
+      return { success: false, error: firstString(obj.error, obj.message) ?? "API reported failure" };
+    }
+    if (typeof obj.status === "string" && /fail|error/i.test(obj.status)) {
+      return { success: false, error: firstString(obj.message, obj.status) ?? obj.status };
+    }
+  }
+
+  return { success: true };
+}
+
+function firstString(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value === "string" && value) return value;
+  }
+  return undefined;
 }

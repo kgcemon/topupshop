@@ -225,10 +225,11 @@ model Order {
 
   user                User?          @relation(fields: [userId], references: [id])
   product             Product        @relation(fields: [productId], references: [id])
-  rechargeOption      RechargeOption @relation(fields: [rechargeOptionId], references: [id])
-  reviewedBy          User?          @relation("OrderReviewedBy", fields: [reviewedById], references: [id])
+  rechargeOption      RechargeOption  @relation(fields: [rechargeOptionId], references: [id])
+  reviewedBy          User?           @relation("OrderReviewedBy", fields: [reviewedById], references: [id])
   redeemedUnipinCodes UnipinCode[]
   apiCallLogs         ApiCallLog[]
+  fulfillmentJob      FulfillmentJob?
 
   @@index([userId])
   @@index([status])
@@ -239,10 +240,15 @@ enum UnipinCodeStatus {
   USED
 }
 
-// Manually stocked (and, in future, API-fetched) Unipin voucher codes, pooled by
-// `denom` — a plain elementary denomination value shared across any RechargeOption
-// whose comma-separated `denom` recipe references it. Consumed one-per-token when
-// an order is approved (see updateOrderStatusAction).
+// Manually stocked Unipin voucher codes, pooled by `denom` — a plain
+// elementary denomination value shared across any RechargeOption whose
+// comma-separated `denom` recipe references it. Claimed (status -> USED,
+// usedForOrderId set) the moment a FulfillmentJob picks them for an order —
+// before the redeem API call, never after (see unipin-queue.ts). `redeemedAt`
+// is set only once the UniPin redeem API call for THIS specific code has
+// succeeded — a claimed-but-not-yet-redeemed code has usedForOrderId set but
+// redeemedAt still null, and a retried job skips calling the API again for
+// any code that already has redeemedAt set.
 model UnipinCode {
   id             String           @id @default(cuid())
   denom          String
@@ -251,6 +257,7 @@ model UnipinCode {
   source         String           @default("MANUAL") // "MANUAL" now; an ApiSetting name once fetched automatically
   usedAt         DateTime?
   usedForOrderId String?
+  redeemedAt     DateTime? // set once the UniPin redeem API call succeeded for this code
   createdAt      DateTime         @default(now())
 
   usedForOrder Order? @relation(fields: [usedForOrderId], references: [id], onDelete: SetNull)
@@ -303,6 +310,35 @@ model ApiCallLog {
   apiSetting ApiSetting? @relation(fields: [apiSettingId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
+}
+
+enum FulfillmentJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// The UniPin fulfillment queue. One row per order (orderId is unique — an
+// order can never get a second job, so a repeated approval or any other
+// retrigger can only ever resume the existing job, never start a parallel
+// one). Created the moment an order becomes eligible for UniPin fulfillment;
+// processUnipinFulfillmentJob (src/lib/unipin-queue.ts) atomically claims a
+// PENDING or FAILED job (status -> PROCESSING) before doing any work, so two
+// concurrent process attempts for the same order can never both run.
+model FulfillmentJob {
+  id           String               @id @default(cuid())
+  orderId      String               @unique
+  status       FulfillmentJobStatus @default(PENDING)
+  attempts     Int                  @default(0)
+  lastError    String?              @db.Text
+  processingAt DateTime?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([status])
 }
 
 // Manual login vault for Garena Shell reseller accounts (no public API —

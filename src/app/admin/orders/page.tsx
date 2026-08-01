@@ -188,22 +188,29 @@ export default async function AdminOrdersPage({
               if (recipe.length === 0) return null;
 
               if (order.redeemedUnipinCodes.length > 0) {
-                const complete = order.redeemedUnipinCodes.length >= recipe.length;
-                const sources = new Set(order.redeemedUnipinCodes.map((c) => c.source));
-                const sourceLabel =
-                  sources.size === 1 && sources.has("MANUAL")
-                    ? "No API — MANUAL স্টক থেকে"
-                    : [...sources].join(", ");
+                const claimComplete = order.redeemedUnipinCodes.length >= recipe.length;
+                const allRedeemed = order.redeemedUnipinCodes.every((c) => c.redeemedAt);
+                const complete = claimComplete && allRedeemed;
                 return (
-                  <div className="mb-2 space-y-1.5 rounded-md border border-green-200 bg-green-50 px-3 py-2">
+                  <div
+                    className={`mb-2 space-y-1.5 rounded-md border px-3 py-2 ${
+                      complete ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"
+                    }`}
+                  >
                     <div className="flex flex-wrap items-center justify-between gap-1">
-                      <p className="text-[10px] font-bold tracking-wide text-green-700 uppercase">
+                      <p
+                        className={`text-[10px] font-bold tracking-wide uppercase ${
+                          complete ? "text-green-700" : "text-orange-700"
+                        }`}
+                      >
                         Unipin কোড ({order.redeemedUnipinCodes.length}/{recipe.length}){" "}
                         {complete ? "✓" : "⚠"}
                       </p>
-                      <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-gray-500">
-                        {sourceLabel}
-                      </span>
+                      {!allRedeemed && claimComplete && (
+                        <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-orange-700">
+                          কোড claim হয়েছে কিন্তু API redeem বাকি
+                        </span>
+                      )}
                     </div>
                     {order.redeemedUnipinCodes.map((code) => (
                       <div key={code.id} className="flex items-center justify-between gap-2">
@@ -212,9 +219,12 @@ export default async function AdminOrdersPage({
                             {code.code}
                           </p>
                           <p className="text-[11px] text-gray-600">
-                            Denom {code.denom} · {code.source}
-                            {code.usedAt
-                              ? ` · ${new Date(code.usedAt).toLocaleString("bn-BD", {
+                            Denom {code.denom} ·{" "}
+                            <span className={code.redeemedAt ? "font-semibold text-green-700" : "font-semibold text-orange-700"}>
+                              {code.redeemedAt ? "API Redeemed ✓" : "API redeem বাকি"}
+                            </span>
+                            {code.redeemedAt
+                              ? ` · ${new Date(code.redeemedAt).toLocaleString("bn-BD", {
                                   dateStyle: "medium",
                                   timeStyle: "short",
                                 })}`

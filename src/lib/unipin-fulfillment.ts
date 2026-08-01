@@ -1,75 +1,81 @@
 import { prisma } from "@/lib/prisma";
-import { purchaseUnipinCode } from "@/lib/unipin-client";
-import type { FulfillmentResult } from "@/lib/order-fulfillment";
+import type { UnipinCode } from "@/generated/prisma/client";
 
 class InsufficientStockError extends Error {}
 
-function parseDenomRecipe(denom: string | null): string[] {
+export function parseDenomRecipe(denom: string | null): string[] {
   return (denom ?? "")
     .split(",")
     .map((t) => t.trim())
     .filter(Boolean);
 }
 
-function tally(tokens: string[]): Map<string, number> {
+export function tally(tokens: string[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const token of tokens) counts.set(token, (counts.get(token) ?? 0) + 1);
   return counts;
 }
 
-// Claims (or, if short, buys via the active Unipin API and then claims) one
-// Unipin code per token in the order's recharge-option denom recipe, and
-// links them to the order. Safe to call multiple times for the same order —
-// once any code is already linked, every call after that is a no-op, so a
-// re-approval (however triggered) can never claim a second code.
-export async function fulfillUnipinOrder(orderId: string): Promise<FulfillmentResult> {
+export type ClaimResult =
+  | { status: "already-claimed"; codes: UnipinCode[] }
+  | { status: "not-applicable" }
+  | { status: "insufficient" }
+  | { status: "claimed"; codes: UnipinCode[] }
+  // A set of codes IS linked to this order, but it doesn't exactly match
+  // what the recipe requires (wrong count, or right count but wrong denom
+  // mix) — this should be structurally impossible given the all-or-nothing
+  // claim transaction below, but it's checked explicitly and unconditionally
+  // before any redeem call is ever allowed to happen: an incomplete/wrong
+  // set must NEVER reach the API, no matter how it came to exist (manual DB
+  // edits, a future bug elsewhere, leftover data from before this check
+  // existed). Calling the redeem API is only ever permitted once the exact
+  // required set is verified.
+  | { status: "count-mismatch"; codes: UnipinCode[]; expected: number };
+
+function verifyLinkedSet(
+  codes: UnipinCode[],
+  neededByDenom: Map<string, number>,
+  expectedTotal: number
+): ClaimResult {
+  if (codes.length !== expectedTotal) {
+    return { status: "count-mismatch", codes, expected: expectedTotal };
+  }
+  const actualByDenom = tally(codes.map((c) => c.denom));
+  for (const [denom, needed] of neededByDenom) {
+    if ((actualByDenom.get(denom) ?? 0) !== needed) {
+      return { status: "count-mismatch", codes, expected: expectedTotal };
+    }
+  }
+  return { status: "already-claimed", codes };
+}
+
+// Atomically claims exactly the codes an order's denom recipe requires
+// (e.g. "4,4,5" -> two denom-4 codes + one denom-5 code) from LOCAL unused
+// stock only — this never purchases or tops up stock via any external API.
+// If local stock can't fully cover every required denom, nothing is claimed
+// and it reports "insufficient" — never a partial claim. Safe to call
+// multiple times for the same order: once codes are linked, every later call
+// re-verifies them against the recipe and returns them as "already-claimed"
+// (or "count-mismatch" if something's actually wrong) without touching stock
+// again.
+export async function claimUnipinCodes(orderId: string): Promise<ClaimResult> {
   const order = await prisma.order.findUniqueOrThrow({
     where: { id: orderId },
     include: { rechargeOption: true },
   });
 
-  const alreadyLinked = await prisma.unipinCode.count({ where: { usedForOrderId: order.id } });
-  if (alreadyLinked > 0) return { status: "already-fulfilled" };
-
   const tokens = parseDenomRecipe(order.rechargeOption.denom);
   if (tokens.length === 0) return { status: "not-applicable" };
 
   const neededByDenom = tally(tokens);
+  const expectedTotal = tokens.length;
 
-  // Top up any denom that's short on local stock via the active Unipin API
-  // setting. Network calls stay outside any DB transaction — a slow request
-  // must never hold a transaction (and its locks) open.
-  for (const [denom, needed] of neededByDenom) {
-    const available = await prisma.unipinCode.count({ where: { denom, status: "UNUSED" } });
-    const shortfall = needed - available;
-    if (shortfall <= 0) continue;
+  const alreadyLinked = await prisma.unipinCode.findMany({ where: { usedForOrderId: order.id } });
+  if (alreadyLinked.length > 0) return verifyLinkedSet(alreadyLinked, neededByDenom, expectedTotal);
 
-    const apiSetting = await prisma.apiSetting.findFirst({
-      where: { type: "UNIPIN", isActive: true },
-    });
-    if (!apiSetting?.endpoint) continue; // no live API configured — surfaces as "insufficient" below
-
-    for (let i = 0; i < shortfall; i++) {
-      const result = await purchaseUnipinCode({
-        apiSettingId: apiSetting.id,
-        endpoint: apiSetting.endpoint,
-        apiKey: apiSetting.apiKey,
-        apiSecret: apiSetting.apiSecret,
-        denom,
-        playerId: order.playerId,
-        orderId: order.id,
-      });
-      if (!result.success) break; // stop for this denom; whatever was bought stays as usable stock
-      await prisma.unipinCode.create({
-        data: { denom, code: result.code, status: "UNUSED", source: apiSetting.name },
-      });
-    }
-  }
-
-  // Atomically claim from whatever's now available (local + freshly bought),
-  // using real row-level locking (SELECT ... FOR UPDATE) so two orders can
-  // never end up claiming the same code. A single bounded retry absorbs the
-  // rare case where two orders racing for the same denom pool right at its
+  // Real row-level locking (SELECT ... FOR UPDATE) so two orders can never
+  // end up claiming the same code. A single bounded retry absorbs the rare
+  // case where two orders racing for the same denom pool right at its
   // capacity boundary both come up short on their first pre-lock candidate
   // window — that only ever produces an extra "insufficient" outcome, never
   // a double-allocation or partial commit.
@@ -77,17 +83,16 @@ export async function fulfillUnipinOrder(orderId: string): Promise<FulfillmentRe
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       return await prisma.$transaction(async (tx) => {
-        // 1. Lock Order — serializes any concurrent/retried call for this
-        // exact order (API timeout retry, queue retry, cron re-run), on top
-        // of the caller's own optimistic status claim.
+        // Lock Order — serializes any concurrent/retried call for this exact
+        // order, on top of the caller's own optimistic status/job claim.
         await tx.$queryRawUnsafe('SELECT id FROM `Order` WHERE id = ? FOR UPDATE', order.id);
 
-        const stillLinked = await tx.unipinCode.count({ where: { usedForOrderId: order.id } });
-        if (stillLinked > 0) return { status: "already-fulfilled" as const };
+        const stillLinked = await tx.unipinCode.findMany({ where: { usedForOrderId: order.id } });
+        if (stillLinked.length > 0) return verifyLinkedSet(stillLinked, neededByDenom, expectedTotal);
 
         const claimedIds: string[] = [];
         for (const [denom, needed] of neededByDenom) {
-          // 2. Lock required UniPin rows + select unused codes in one locking
+          // Lock required UniPin rows + select unused codes in one locking
           // read. A locking read always returns the LATEST committed column
           // values once the lock is granted, so re-checking `status` on the
           // result (rather than trusting the pre-lock WHERE match) is what
@@ -107,15 +112,25 @@ export async function fulfillUnipinOrder(orderId: string): Promise<FulfillmentRe
           claimedIds.push(...stillUnused.map((row) => row.id));
         }
 
-        // 3. Mark used + assign to order immediately, inside the same
-        // transaction that holds the row locks — never wait for the API
-        // call's success/failure to do this, since another order could
+        // Mark used + assign to order immediately, inside the same
+        // transaction that holds the row locks — never wait for the redeem
+        // API call's success/failure to do this, since another order could
         // otherwise grab the same code in the meantime.
         await tx.unipinCode.updateMany({
           where: { id: { in: claimedIds }, status: "UNUSED" }, // defensive filter on top of the already-locked/verified rows
           data: { status: "USED", usedAt: new Date(), usedForOrderId: order.id },
         });
-        return { status: "fulfilled" as const };
+
+        const codes = await tx.unipinCode.findMany({ where: { id: { in: claimedIds } } });
+        if (codes.length !== expectedTotal) {
+          // Should be unreachable given the loop above always claims exactly
+          // `expectedTotal` ids — but if it somehow isn't, fail loudly and
+          // roll back rather than silently handing back a wrong-sized set.
+          throw new Error(
+            `claimUnipinCodes invariant violated for order ${order.id}: claimed ${codes.length}, expected ${expectedTotal}`
+          );
+        }
+        return { status: "claimed" as const, codes };
       });
     } catch (error) {
       if (!(error instanceof InsufficientStockError)) throw error;

@@ -5,12 +5,11 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { orderSchema, guestContactSchema } from "@/lib/validation";
-import { generateOrderNumber, formatOrderNumber } from "@/lib/utils";
+import { generateOrderNumber } from "@/lib/utils";
 import { getClientIp } from "@/lib/rate-limit";
 import { isIpBlocked, applyAbuseBlock, detectMaliciousInput } from "@/lib/security";
 import type { ActionState } from "@/lib/actions/auth-actions";
-import { fulfillOrder } from "@/lib/order-fulfillment";
-import { notifyAdmins } from "@/lib/notifications";
+import { processOrderFulfillment } from "@/lib/order-fulfillment";
 
 export type OrderActionState = ActionState & {
   order?: {
@@ -210,18 +209,11 @@ export async function placeOrderAction(
   // the transaction above since it may call a live API.
   let finalStatus: string = createdOrder.status;
   if (createdOrder.status === "APPROVED") {
-    const result = await fulfillOrder(createdOrder.id, option.deliveryMethod);
+    const result = await processOrderFulfillment(createdOrder.id, option.deliveryMethod, {
+      orderSerial: createdOrder.orderSerial,
+    });
     if (result.status === "fulfilled" || result.status === "already-fulfilled") {
-      await prisma.order.update({ where: { id: createdOrder.id }, data: { status: "RUNNING" } });
       finalStatus = "RUNNING";
-    } else if (result.status === "insufficient" || result.status === "failed") {
-      await notifyAdmins(prisma, {
-        type: "ORDER_FULFILLMENT_ISSUE",
-        message: `⚠️ অর্ডার ${formatOrderNumber(createdOrder.orderSerial)} (${option.deliveryMethod}) fulfillment ব্যর্থ: ${
-          result.status === "insufficient" ? "পর্যাপ্ত stock/config নেই" : result.error ?? "API call ব্যর্থ"
-        }`,
-        link: "/admin/orders?status=APPROVED",
-      });
     }
   }
 
