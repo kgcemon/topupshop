@@ -1,29 +1,46 @@
 import { logApiCall } from "@/lib/api-log";
 
-type ShellCallResult =
-  | { success: true; reference: string }
-  | { success: false; error: string };
+type ShellCallResult = { success: true } | { success: false; error: string };
 
-// Field names and auth shape are a best-effort guess (mirrors the same
-// unverified-pending-real-docs posture as unipin-client.ts) — no confirmed
-// Shell API spec exists yet. Verify against ApiCallLog / your test endpoint
-// and adjust here once the real contract is known.
+// Same reseller/bot as unipin-client.ts's UNIPIN_TG_BOT_ID — this vendor
+// serves both UniPin and Shell top-ups through the same backend, hence the
+// near-identical request shape (playerid/pacakge/orderid/url/tgbotid/ourstock).
+const SHELL_TG_BOT_ID = "701657976";
+
+// Confirmed request contract:
+//   { playerid, pacakge, code: "shell", orderid, url, username, password,
+//     autocode, tgbotid, shell_balance, ourstock }
+// `code` is always the literal string "shell" here — it's how this shared
+// endpoint tells a Shell top-up apart from a UniPin voucher redeem (where
+// `code` instead carries the actual voucher code). `username`/`password` are
+// this Shell reseller account's login, `autocode` is the account's shell
+// top-up code — both come from the SHELL ApiSetting row (apiKey/apiSecret/
+// code respectively), not from the separate manual GarenaShellAccount vault.
 export async function callShellApi(params: {
   apiSettingId: number;
   endpoint: string;
-  userId: string | null;
+  username: string | null;
   password: string | null;
-  code: string | null;
+  autocode: string | null;
+  denom: string | null;
   playerId: string;
   orderId: string;
-  amount: number;
+  orderSerial: number;
+  callbackUrl: string;
+  shellBalance: number;
 }): Promise<ShellCallResult> {
   const body = {
-    userId: params.userId,
+    playerid: params.playerId,
+    pacakge: params.denom ?? "",
+    code: "shell",
+    orderid: params.orderSerial,
+    url: params.callbackUrl,
+    username: params.username,
     password: params.password,
-    code: params.code,
-    uid: params.playerId,
-    amount: params.amount,
+    autocode: params.autocode,
+    tgbotid: SHELL_TG_BOT_ID,
+    shell_balance: params.shellBalance,
+    ourstock: 1,
   };
   const requestBody = JSON.stringify(body);
 
@@ -50,9 +67,12 @@ export async function callShellApi(params: {
 
   const text = await response.text();
 
-  const result: ShellCallResult = !response.ok
-    ? { success: false, error: `HTTP ${response.status}` }
-    : parseShellResponse(text);
+  // Same posture as unipin-client.ts's redeem call: only the HTTP status
+  // decides success/failure here, the body is logged but not parsed. Real
+  // confirmation comes via the `url` callback (see
+  // src/app/api/shell/callback/route.ts).
+  const result: ShellCallResult =
+    response.status === 200 ? { success: true } : { success: false, error: `HTTP ${response.status}` };
 
   await logApiCall({
     orderId: params.orderId,
@@ -66,28 +86,4 @@ export async function callShellApi(params: {
   });
 
   return result;
-}
-
-function extractReference(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") return null;
-  const obj = payload as Record<string, unknown>;
-  for (const key of ["reference", "code", "trxId", "transactionId", "id"]) {
-    const value = obj[key];
-    if (typeof value === "string" && value) return value;
-  }
-  if (obj.data && typeof obj.data === "object") return extractReference(obj.data);
-  return null;
-}
-
-function parseShellResponse(text: string): ShellCallResult {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    return { success: false, error: "Response was not valid JSON" };
-  }
-  const reference = extractReference(parsed);
-  return reference
-    ? { success: true, reference }
-    : { success: false, error: "No reference/code field found in response" };
 }
