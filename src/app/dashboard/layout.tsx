@@ -13,6 +13,7 @@ const NAV = [
   { href: "/dashboard", label: "Overview" },
   { href: "/dashboard/deposit", label: "Deposit" },
   { href: "/dashboard/orders", label: "Order History" },
+  { href: "/dashboard/market", label: "My Market Listings" },
   { href: "/dashboard/leaderboard", label: "Rank & Leaderboard" },
   { href: "/dashboard/profile", label: "Profile" },
 ];

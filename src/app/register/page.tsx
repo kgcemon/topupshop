@@ -4,7 +4,7 @@ import { GoogleSignInButton } from "@/components/google-signin-button";
 
 export const metadata: Metadata = {
   title: "Register",
-  description: "নতুন Uc Ghor একাউন্ট তৈরি করুন।",
+  description: "নতুন TopUpsBD একাউন্ট তৈরি করুন।",
   alternates: { canonical: "/register" },
 };
 

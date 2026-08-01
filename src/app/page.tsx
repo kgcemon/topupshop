@@ -9,7 +9,7 @@ import { InstallAppPopup } from "@/components/install-app-popup";
 import { BlogPostCard } from "@/components/blog-post-card";
 
 export const metadata: Metadata = {
-  title: "Uc Ghor - Free Fire Diamond TopUp | Largest TopUp Site In Bangladesh",
+  title: "TopUpsBD - Free Fire Diamond TopUp | Largest TopUp Site In Bangladesh",
   description:
     "সবচেয়ে কম দামে ও দ্রুততম সময়ে Free Fire Diamond TopUp, UID TopUp, Weekly/Monthly Membership এবং Level Up Pass কিনুন। bKash, Nagad, Rocket পেমেন্টে ২৪ ঘন্টা অটোমেটিক ডেলিভারি।",
   alternates: { canonical: "/" },

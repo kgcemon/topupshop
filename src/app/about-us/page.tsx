@@ -5,7 +5,7 @@ import { LegalPage } from "@/components/legal-page";
 export const metadata: Metadata = {
   title: "About Us",
   description:
-    "Uc Ghor হলো বাংলাদেশের অন্যতম বিশ্বস্ত Free Fire Diamond TopUp প্ল্যাটফর্ম — দ্রুত ডেলিভারি, নিরাপদ পেমেন্ট এবং ২৪ ঘন্টা সাপোর্ট নিয়ে আমরা কাজ করছি।",
+    "TopUpsBD হলো বাংলাদেশের অন্যতম বিশ্বস্ত Free Fire Diamond TopUp প্ল্যাটফর্ম — দ্রুত ডেলিভারি, নিরাপদ পেমেন্ট এবং ২৪ ঘন্টা সাপোর্ট নিয়ে আমরা কাজ করছি।",
   alternates: { canonical: "/about-us" },
 };
 

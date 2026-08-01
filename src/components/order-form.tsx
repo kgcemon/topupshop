@@ -268,7 +268,7 @@ export function OrderForm({
                       <WalletIcon />
                     )
                   }
-                  title="uc ghor ওয়ালেট"
+                  title="TopUpsBD ওয়ালেট"
                   subtitle="Wallet Pay"
                   onClick={() => setMethod("WALLET")}
                 />

@@ -34,14 +34,14 @@ export async function generateMetadata({
 
   const description =
     product.description ||
-    `${product.name} - Uc Ghor থেকে দ্রুত ও নিরাপদে টপআপ করুন। ${product.category} সার্ভিস।`;
+    `${product.name} - TopUpsBD থেকে দ্রুত ও নিরাপদে টপআপ করুন। ${product.category} সার্ভিস।`;
 
   return {
     title: product.name,
     description,
     alternates: { canonical: `/topup/${product.id}/${product.slug}` },
     openGraph: {
-      title: `${product.name} | Uc Ghor`,
+      title: `${product.name} | TopUpsBD`,
       description,
       images: [{ url: product.image, width: 800, height: 800 }],
     },
@@ -94,7 +94,7 @@ export default async function TopupProductPage({
     "@type": "Product",
     name: product.name,
     image: product.image,
-    description: product.description || `${product.name} topup - Uc Ghor`,
+    description: product.description || `${product.name} topup - TopUpsBD`,
     category: product.category,
     offers: product.rechargeOptions.map((option) => ({
       "@type": "Offer",
@@ -122,7 +122,7 @@ export default async function TopupProductPage({
               bestRating: "5",
               worstRating: "1",
             },
-            author: { "@type": "Person", name: r.user.name || "Uc Ghor Customer" },
+            author: { "@type": "Person", name: r.user.name || "TopUpsBD Customer" },
             reviewBody: r.comment,
             datePublished: r.createdAt.toISOString(),
           })),

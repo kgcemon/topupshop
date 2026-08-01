@@ -93,6 +93,8 @@ model User {
   sentNotifications    Notification[]      @relation("ActorNotifications")
   loginLogs            LoginLog[]
   reviews              Review[]
+  marketListings         MarketListing[]  @relation("MarketListingSeller")
+  reviewedMarketListings MarketListing[]  @relation("MarketListingReviewedBy")
 }
 
 // Per-login activity trail — pruned in application code (see recordLoginActivity)
@@ -519,9 +521,45 @@ model Notification {
   @@index([userId, createdAt])
 }
 
+enum MarketListingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SOLD
+}
+
+// Peer-to-peer marketplace where logged-in users list a game account/ID they
+// want to sell. Admin moderates every new listing (status starts PENDING) before
+// it's publicly visible — see marketEnabled on SiteSetting for the on/off switch
+// for the whole feature. No in-app payment/escrow: buyer and seller connect
+// directly via the required contactNumber/whatsappNumber (see marketListingFormSchema).
+model MarketListing {
+  id              String              @id @default(cuid())
+  sellerId        String
+  game            String
+  title           String
+  description     String              @db.Text
+  price           Int // in BDT
+  images          Json // string[] of /uploads paths
+  contactNumber   String?
+  whatsappNumber  String?
+  status          MarketListingStatus @default(PENDING)
+  adminNote       String?             @db.Text
+  reviewedById    String?
+  reviewedAt      DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  seller     User  @relation("MarketListingSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("MarketListingReviewedBy", fields: [reviewedById], references: [id])
+
+  @@index([status, createdAt])
+  @@index([sellerId])
+}
+
 model SiteSetting {
   id                   Int     @id @default(1)
-  siteName             String  @default("Uc Ghor")
+  siteName             String  @default("TopUpsBD")
   tagline              String  @default("Largest TopUp Site In Bangladesh")
   metaTitle            String? @db.Text
   metaDescription      String? @db.Text
@@ -532,7 +570,7 @@ model SiteSetting {
   whatsappNumber       String  @default("01343053411")
   telegramLink         String  @default("https://t.me/+K3PmqW02YCI2OGRl")
   facebookLink         String?
-  contactEmail         String  @default("support@ucghor.com")
+  contactEmail         String  @default("support@topupsbd.com")
   bkashNumber          String  @default("01343053411")
   nagadNumber          String  @default("01343053411")
   rocketNumber         String  @default("01343053411")
@@ -541,4 +579,5 @@ model SiteSetting {
   rocketIcon           String?
   walletIcon           String?
   allowGuestOrders     Boolean @default(false)
+  marketEnabled        Boolean @default(true)
 }

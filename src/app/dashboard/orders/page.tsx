@@ -1,17 +1,33 @@
+import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatTaka, formatOrderNumber } from "@/lib/utils";
 import { OrderStatusBadge } from "@/components/status-badge";
 
-export default async function OrderHistoryPage() {
+const PAGE_SIZE = 20;
+
+export default async function OrderHistoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const session = await auth();
   const userId = session!.user.id;
+  const { page } = await searchParams;
+  const currentPage = Math.max(1, Number(page) || 1);
 
-  const orders = await prisma.order.findMany({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
-    include: { product: true, rechargeOption: true },
-  });
+  const [orders, totalCount] = await Promise.all([
+    prisma.order.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      skip: (currentPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      include: { product: true, rechargeOption: true },
+    }),
+    prisma.order.count({ where: { userId } }),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 md:p-6">
@@ -81,6 +97,38 @@ export default async function OrderHistoryPage() {
               </tbody>
             </table>
           </div>
+
+          {totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-4 text-xs">
+              <p className="text-gray-500">
+                Page {currentPage} / {totalPages} ({totalCount} orders)
+              </p>
+              <div className="flex gap-2">
+                {currentPage > 1 ? (
+                  <Link
+                    href={`/dashboard/orders?page=${currentPage - 1}`}
+                    scroll={false}
+                    className="rounded-md border border-gray-300 px-3 py-1.5 font-bold hover:bg-gray-50"
+                  >
+                    Prev
+                  </Link>
+                ) : (
+                  <span className="rounded-md border border-gray-200 px-3 py-1.5 font-bold text-gray-300">Prev</span>
+                )}
+                {currentPage < totalPages ? (
+                  <Link
+                    href={`/dashboard/orders?page=${currentPage + 1}`}
+                    scroll={false}
+                    className="rounded-md border border-gray-300 px-3 py-1.5 font-bold hover:bg-gray-50"
+                  >
+                    Next
+                  </Link>
+                ) : (
+                  <span className="rounded-md border border-gray-200 px-3 py-1.5 font-bold text-gray-300">Next</span>
+                )}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

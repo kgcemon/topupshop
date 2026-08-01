@@ -8,13 +8,19 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-function buildNav(pendingOrders: number, pendingWalletRequests: number, pendingReviews: number) {
+function buildNav(
+  pendingOrders: number,
+  pendingWalletRequests: number,
+  pendingReviews: number,
+  pendingMarketListings: number
+) {
   return [
     { href: "/admin", label: "Dashboard", badge: 0 },
     { href: "/admin/orders", label: "Orders", badge: pendingOrders },
     { href: "/admin/wallet-requests", label: "Wallet Requests", badge: pendingWalletRequests },
     { href: "/admin/users", label: "Users", badge: 0 },
     { href: "/admin/products", label: "Products", badge: 0 },
+    { href: "/admin/market", label: "Market", badge: pendingMarketListings },
     { href: "/admin/unipin", label: "Unipin", badge: 0 },
     { href: "/admin/shell", label: "Garena Shell", badge: 0 },
     { href: "/admin/api-settings", label: "API Settings", badge: 0 },
@@ -33,13 +39,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect("/dashboard");
   }
 
-  const [pendingOrders, pendingWalletRequests, pendingReviews] = await Promise.all([
+  const [pendingOrders, pendingWalletRequests, pendingReviews, pendingMarketListings] = await Promise.all([
     prisma.order.count({ where: { status: "PENDING" } }),
     prisma.walletTransaction.count({ where: { type: "DEPOSIT", status: "PENDING" } }),
     prisma.review.count({ where: { isApproved: false } }),
+    prisma.marketListing.count({ where: { status: "PENDING" } }),
   ]);
 
-  const NAV = buildNav(pendingOrders, pendingWalletRequests, pendingReviews);
+  const NAV = buildNav(pendingOrders, pendingWalletRequests, pendingReviews, pendingMarketListings);
 
   return (
     <div className="container mx-auto px-4 py-8">

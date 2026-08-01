@@ -17,7 +17,7 @@ export function SiteFooter({ settings }: { settings: Settings }) {
         <div>
           <Image
             src="/images/logo.png"
-            alt="Uc Ghor Logo"
+            alt="TopUpsBD Logo"
             width={160}
             height={46}
             className="w-40 h-auto mb-4"
@@ -93,7 +93,16 @@ export function SiteFooter({ settings }: { settings: Settings }) {
         </div>
       </div>
       <div className="border-t border-gray-200 py-4 text-center text-sm text-gray-600">
-        All Rights Reserved | Developed By <span className="font-bold">Team Mahal</span>
+        All Rights Reserved | Developed By{" "}
+        <a
+          href="https://wa.me/8801300300999"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-bold hover:text-primary-600"
+        >
+          Emon Khan
+        </a>{" "}
+        (01300300999)
       </div>
     </footer>
   );

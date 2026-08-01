@@ -7,17 +7,19 @@ import { updateOrderStatusAction } from "@/lib/actions/admin-actions";
 import type { Prisma } from "@/generated/prisma/client";
 
 const STATUS_FILTERS = ["ALL", "PENDING", "APPROVED", "RUNNING", "DELIVERED", "REJECTED", "CANCELLED"] as const;
+const PAGE_SIZE = 20;
 
 export default async function AdminOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; page?: string }>;
 }) {
-  const { status, q } = await searchParams;
+  const { status, q, page } = await searchParams;
   const filter = STATUS_FILTERS.includes(status as (typeof STATUS_FILTERS)[number])
     ? (status as (typeof STATUS_FILTERS)[number])
     : "ALL";
   const query = (q ?? "").trim();
+  const currentPage = Math.max(1, Number(page) || 1);
 
   const numericQuery = query.replace(/^#/, "");
   const isNumeric = /^\d+$/.test(numericQuery);
@@ -31,14 +33,17 @@ export default async function AdminOrdersPage({
       }
     : {};
 
-  const [orders, statusCounts] = await Promise.all([
+  const filterWhere: Prisma.OrderWhereInput = {
+    ...(filter === "ALL" ? {} : { status: filter }),
+    ...searchWhere,
+  };
+
+  const [orders, matchingCount, statusCounts] = await Promise.all([
     prisma.order.findMany({
-      where: {
-        ...(filter === "ALL" ? {} : { status: filter }),
-        ...searchWhere,
-      },
+      where: filterWhere,
       orderBy: { createdAt: "desc" },
-      take: 100,
+      skip: (currentPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
       include: {
         product: true,
         rechargeOption: true,
@@ -48,12 +53,22 @@ export default async function AdminOrdersPage({
         apiCallLogs: { orderBy: { createdAt: "desc" }, include: { apiSetting: { select: { name: true } } } },
       },
     }),
+    prisma.order.count({ where: filterWhere }),
     prisma.order.groupBy({ by: ["status"], _count: { _all: true } }),
   ]);
 
   const totalCount = statusCounts.reduce((sum, row) => sum + row._count._all, 0);
   const countByStatus: Record<string, number> = { ALL: totalCount };
   for (const row of statusCounts) countByStatus[row.status] = row._count._all;
+
+  const totalPages = Math.max(1, Math.ceil(matchingCount / PAGE_SIZE));
+
+  function pageHref(p: number) {
+    const params = new URLSearchParams({ status: filter });
+    if (query) params.set("q", query);
+    if (p > 1) params.set("page", String(p));
+    return `/admin/orders?${params.toString()}`;
+  }
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-6">
@@ -361,6 +376,38 @@ export default async function AdminOrdersPage({
           </div>
         ))}
       </div>
+
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-4 text-xs">
+          <p className="text-gray-500">
+            Page {currentPage} / {totalPages} ({matchingCount} orders)
+          </p>
+          <div className="flex gap-2">
+            {currentPage > 1 ? (
+              <Link
+                href={pageHref(currentPage - 1)}
+                scroll={false}
+                className="rounded-md border border-gray-300 px-3 py-1.5 font-bold hover:bg-gray-50"
+              >
+                Prev
+              </Link>
+            ) : (
+              <span className="rounded-md border border-gray-200 px-3 py-1.5 font-bold text-gray-300">Prev</span>
+            )}
+            {currentPage < totalPages ? (
+              <Link
+                href={pageHref(currentPage + 1)}
+                scroll={false}
+                className="rounded-md border border-gray-300 px-3 py-1.5 font-bold hover:bg-gray-50"
+              >
+                Next
+              </Link>
+            ) : (
+              <span className="rounded-md border border-gray-200 px-3 py-1.5 font-bold text-gray-300">Next</span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

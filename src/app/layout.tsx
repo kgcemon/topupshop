@@ -22,11 +22,11 @@ const headingFont = Bree_Serif({
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 const DEFAULT_DESCRIPTION =
-  "Uc Ghor থেকে সবচেয়ে দ্রুত ও নিরাপদভাবে Free Fire Diamond TopUp করুন। UID Topup, Weekly/Monthly Membership, Level Up Pass — ২৪ ঘন্টা সার্ভিস।";
+  "TopUpsBD থেকে সবচেয়ে দ্রুত ও নিরাপদভাবে Free Fire Diamond TopUp করুন। UID Topup, Weekly/Monthly Membership, Level Up Pass — ২৪ ঘন্টা সার্ভিস।";
 const DEFAULT_KEYWORDS = [
   "Free Fire Topup",
   "Free Fire Diamond",
-  "UC Ghor",
+  "TopUpsBD",
   "Free Fire BD Server Topup",
   "Free Fire Membership",
   "Bangladesh Topup Site",

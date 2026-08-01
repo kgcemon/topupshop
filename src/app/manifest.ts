@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Uc Ghor - Free Fire Diamond TopUp",
-    short_name: "Uc Ghor",
+    name: "TopUpsBD - Free Fire Diamond TopUp",
+    short_name: "TopUpsBD",
     description: "Largest Free Fire Diamond TopUp site in Bangladesh.",
     start_url: "/",
     display: "standalone",

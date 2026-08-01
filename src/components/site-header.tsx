@@ -32,7 +32,7 @@ export async function SiteHeader() {
           <Link href="/" className="shrink-0">
             <Image
               src="/images/logo.png"
-              alt="Uc Ghor Logo"
+              alt="TopUpsBD Logo"
               width={192}
               height={56}
               className="w-40 md:w-48 h-auto"
@@ -43,6 +43,7 @@ export async function SiteHeader() {
             <SiteHeaderNav
               items={[
                 { href: "/#topup", label: "Topup" },
+                { href: "/market", label: "Market" },
                 { href: "/blog", label: "Blog" },
                 { href: "/contact-us", label: "Contact Us" },
                 ...(session?.user?.role === "ADMIN" ? [{ href: "/admin", label: "Admin" }] : []),

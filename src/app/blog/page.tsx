@@ -7,7 +7,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 export const metadata: Metadata = {
   title: "ব্লগ",
   description:
-    "Uc Ghor ব্লগে Free Fire Diamond TopUp, গেমিং টিপস ও নতুন অফার সম্পর্কে সর্বশেষ আপডেট পড়ুন।",
+    "TopUpsBD ব্লগে Free Fire Diamond TopUp, গেমিং টিপস ও নতুন অফার সম্পর্কে সর্বশেষ আপডেট পড়ুন।",
   alternates: { canonical: "/blog" },
 };
 
@@ -19,7 +19,7 @@ export default async function BlogListPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: "Uc Ghor Blog",
+    name: "TopUpsBD Blog",
     url: `${siteUrl}/blog`,
     mainEntity: {
       "@type": "ItemList",

@@ -6,7 +6,7 @@ export async function getSiteSettings() {
   return (
     settings ?? {
       id: 1,
-      siteName: "Uc Ghor",
+      siteName: "TopUpsBD",
       tagline: "Largest TopUp Site In Bangladesh",
       metaTitle: null,
       metaDescription: null,
@@ -17,7 +17,7 @@ export async function getSiteSettings() {
       whatsappNumber: "01343053411",
       telegramLink: "https://t.me/",
       facebookLink: null,
-      contactEmail: "support@ucghor.com",
+      contactEmail: "support@topupsbd.com",
       bkashNumber: "01343053411",
       nagadNumber: "01343053411",
       rocketNumber: "01343053411",
@@ -26,6 +26,7 @@ export async function getSiteSettings() {
       rocketIcon: null,
       walletIcon: null,
       allowGuestOrders: false,
+      marketEnabled: true,
     }
   );
 }

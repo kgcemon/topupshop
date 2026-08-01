@@ -114,6 +114,30 @@ export const reviewFormSchema = z.object({
   comment: z.string().trim().min(5, "মন্তব্য কমপক্ষে ৫ ক্যারেক্টার লিখুন").max(1000, "মন্তব্য সর্বোচ্চ ১০০০ ক্যারেক্টার হতে পারবে"),
 });
 
+export const marketListingFormSchema = z
+  .object({
+    game: z.string().trim().min(2, "গেমের নাম দিন").max(60),
+    title: z.string().trim().min(5, "টাইটেল কমপক্ষে ৫ ক্যারেক্টার দিন").max(100),
+    description: z.string().trim().min(10, "বিস্তারিত বিবরণ দিন (কমপক্ষে ১০ ক্যারেক্টার)").max(2000),
+    price: z.coerce.number().int().min(1, "মূল্য দিন"),
+    contactNumber: z
+      .string()
+      .trim()
+      .regex(/^01[3-9]\d{8}$/, "সঠিক বাংলাদেশি মোবাইল নাম্বার দিন (01xxxxxxxxx)")
+      .optional()
+      .or(z.literal("")),
+    whatsappNumber: z
+      .string()
+      .trim()
+      .regex(/^[+\d][\d\s-]{7,19}$/, "সঠিক WhatsApp নাম্বার দিন")
+      .optional()
+      .or(z.literal("")),
+  })
+  .refine((data) => data.contactNumber || data.whatsappNumber, {
+    message: "কন্টাক্ট নাম্বার অথবা WhatsApp নাম্বার আবশ্যক",
+    path: ["contactNumber"],
+  });
+
 export const siteSettingsSchema = z.object({
   siteName: z.string().trim().min(1, "সাইট নাম আবশ্যক"),
   tagline: z.string().trim().min(1, "ট্যাগলাইন আবশ্যক"),
