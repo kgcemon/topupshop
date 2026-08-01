@@ -14,9 +14,9 @@ import {
 import type { ActionState } from "@/lib/actions/auth-actions";
 import { saveUploadedImage, saveUploadedIcon } from "@/lib/upload";
 import { grantFirstOrderReferralBonus } from "@/lib/referral";
-import { createNotification } from "@/lib/notifications";
+import { createNotification, notifyAdmins } from "@/lib/notifications";
 import { formatOrderNumber } from "@/lib/utils";
-import { fulfillUnipinOrder } from "@/lib/unipin-fulfillment";
+import { fulfillOrder } from "@/lib/order-fulfillment";
 
 async function requireAdmin() {
   const session = await auth();
@@ -85,19 +85,24 @@ export async function updateOrderStatusAction(formData: FormData) {
       return { order: current, enteringApproved, enteringDelivered, enteringCancelledOrRejected, noteChanged };
     });
 
-  // On approval, claim (or, if short, buy via the live Unipin API and then claim)
-  // one code per token in the option's denom recipe. Runs outside any DB
-  // transaction since it may call out to a live API. Idempotent — a second call
-  // for the same order (e.g. a retried approval) is always a safe no-op once
-  // codes are already linked, so it can never claim a second code.
+  // On approval, dispatch to whichever delivery method this option uses
+  // (UniPin claims/buys codes, Shell calls its own API, Manual is a no-op).
+  // Runs outside any DB transaction since it may call out to a live API.
+  // Idempotent — a second call for the same order (e.g. a retried approval)
+  // is always a safe no-op once fulfillment already succeeded once.
+  let fulfillmentIssue = false;
+  let fulfillmentError: string | undefined;
   if (enteringApproved) {
-    const result = await fulfillUnipinOrder(order.id);
-    // "already-fulfilled" happens if codes got linked earlier but the status
-    // wasn't (or no longer is) RUNNING — e.g. an admin manually reverted it
-    // back to APPROVED. Either outcome means codes are linked, so both should
-    // land on RUNNING.
+    const result = await fulfillOrder(order.id, order.rechargeOption.deliveryMethod);
+    // "already-fulfilled" happens if fulfillment succeeded earlier but the
+    // status wasn't (or no longer is) RUNNING — e.g. an admin manually
+    // reverted it back to APPROVED. Either outcome means it's done, so both
+    // should land on RUNNING.
     if (result.status === "fulfilled" || result.status === "already-fulfilled") {
       await prisma.order.update({ where: { id: order.id }, data: { status: "RUNNING" } });
+    } else if (result.status === "insufficient" || result.status === "failed") {
+      fulfillmentIssue = true;
+      fulfillmentError = result.status === "insufficient" ? undefined : result.error;
     }
   }
 
@@ -174,6 +179,17 @@ export async function updateOrderStatusAction(formData: FormData) {
           link: "/dashboard/orders",
         });
       }
+    }
+
+    if (fulfillmentIssue) {
+      await notifyAdmins(tx, {
+        actorId: session.user.id,
+        type: "ORDER_FULFILLMENT_ISSUE",
+        message: `⚠️ অর্ডার ${formatOrderNumber(order.orderSerial)} (${order.rechargeOption.deliveryMethod}) fulfillment ব্যর্থ: ${
+          fulfillmentError ?? "পর্যাপ্ত stock/config নেই"
+        }`,
+        link: "/admin/orders?status=APPROVED",
+      });
     }
   });
 
@@ -263,6 +279,15 @@ export async function deleteRechargeOptionAction(formData: FormData) {
   revalidatePath("/");
 }
 
+const DELIVERY_METHODS = ["UNIPIN", "SHELL", "MANUAL"] as const;
+
+function parseDeliveryMethod(formData: FormData): (typeof DELIVERY_METHODS)[number] {
+  const raw = String(formData.get("deliveryMethod") || "MANUAL");
+  return DELIVERY_METHODS.includes(raw as (typeof DELIVERY_METHODS)[number])
+    ? (raw as (typeof DELIVERY_METHODS)[number])
+    : "MANUAL";
+}
+
 export async function addRechargeOptionAction(formData: FormData) {
   await requireAdmin();
   const productId = Number(formData.get("productId"));
@@ -271,6 +296,7 @@ export async function addRechargeOptionAction(formData: FormData) {
   const stockRaw = String(formData.get("stock") || "").trim();
   const stock = stockRaw === "" ? null : Number(stockRaw);
   const denom = String(formData.get("denom") || "").trim();
+  const deliveryMethod = parseDeliveryMethod(formData);
 
   if (!label || !Number.isFinite(price)) return;
   if (stock !== null && (!Number.isFinite(stock) || stock < 0)) return;
@@ -287,6 +313,7 @@ export async function addRechargeOptionAction(formData: FormData) {
       price,
       stock,
       denom: denom || null,
+      deliveryMethod,
       sortOrder: (last?.sortOrder ?? 0) + 1,
     },
   });
@@ -309,6 +336,21 @@ export async function updateRechargeOptionDenomAction(formData: FormData) {
 
   revalidatePath(`/admin/products/${productId}/edit`);
   revalidatePath("/admin/unipin");
+}
+
+export async function updateRechargeOptionDeliveryMethodAction(formData: FormData) {
+  await requireAdmin();
+  const optionId = Number(formData.get("optionId"));
+  const productId = formData.get("productId");
+  if (!Number.isFinite(optionId)) return;
+  const deliveryMethod = parseDeliveryMethod(formData);
+
+  await prisma.rechargeOption.update({
+    where: { id: optionId },
+    data: { deliveryMethod },
+  });
+
+  revalidatePath(`/admin/products/${productId}/edit`);
 }
 
 export async function updateRechargeOptionStockAction(formData: FormData) {

@@ -11,7 +11,7 @@ export async function createNotification(
   params: {
     userId: string;
     actorId?: string | null;
-    type: "COMMENT_REPLY" | "COMMENT_LIKE" | "ORDER_COMPLETED" | "ORDER_NOTE";
+    type: "COMMENT_REPLY" | "COMMENT_LIKE" | "ORDER_COMPLETED" | "ORDER_NOTE" | "ORDER_FULFILLMENT_ISSUE";
     message: string;
     link?: string | null;
   }
@@ -26,5 +26,35 @@ export async function createNotification(
       message: params.message,
       link: params.link ?? null,
     },
+  });
+}
+
+/**
+ * Notifies every admin user — used for system-triggered alerts (e.g. an
+ * order's delivery API failed or had insufficient stock/config) that don't
+ * target one specific customer. Unlike createNotification, this never skips
+ * on actorId === userId — other admins still need to see the alert even if
+ * the triggering admin is also one of the recipients.
+ */
+export async function notifyAdmins(
+  client: Prisma.TransactionClient,
+  params: {
+    actorId?: string | null;
+    type: "ORDER_FULFILLMENT_ISSUE";
+    message: string;
+    link?: string | null;
+  }
+) {
+  const admins = await client.user.findMany({ where: { role: "ADMIN" }, select: { id: true } });
+  if (admins.length === 0) return;
+
+  await client.notification.createMany({
+    data: admins.map((admin) => ({
+      userId: admin.id,
+      actorId: params.actorId ?? null,
+      type: params.type,
+      message: params.message,
+      link: params.link ?? null,
+    })),
   });
 }

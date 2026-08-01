@@ -123,7 +123,18 @@ export default async function AdminOrdersPage({
                 <p className="text-base font-extrabold text-secondary-900">
                   {formatTaka(order.amount)} TK
                 </p>
-                <div className="mt-1">
+                <div className="mt-1 flex items-center justify-end gap-1.5">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      order.rechargeOption.deliveryMethod === "UNIPIN"
+                        ? "bg-blue-100 text-blue-700"
+                        : order.rechargeOption.deliveryMethod === "SHELL"
+                          ? "bg-purple-100 text-purple-700"
+                          : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {order.rechargeOption.deliveryMethod}
+                  </span>
                   <OrderStatusBadge status={order.status} />
                 </div>
               </div>
@@ -168,7 +179,8 @@ export default async function AdminOrdersPage({
               </div>
             </div>
 
-            {(() => {
+            {order.rechargeOption.deliveryMethod === "UNIPIN" &&
+              (() => {
               const recipe = (order.rechargeOption.denom ?? "")
                 .split(",")
                 .map((t) => t.trim())
@@ -228,6 +240,15 @@ export default async function AdminOrdersPage({
               return null;
             })()}
 
+            {order.rechargeOption.deliveryMethod === "SHELL" &&
+              order.status === "APPROVED" &&
+              !order.apiCallLogs.some((log) => log.deliveryMethod === "SHELL" && log.success) && (
+                <div className="mb-2 rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700">
+                  Shell API কল সফল হয়নি বা এখনো হয়নি — API Settings-এ Shell config চেক করে আবার Approve সাবমিট করে
+                  রিট্রাই করুন।
+                </div>
+              )}
+
             {order.apiCallLogs.length > 0 && (
               <details className="mb-2 rounded-md border border-gray-200">
                 <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-bold text-gray-600">
@@ -244,6 +265,11 @@ export default async function AdminOrdersPage({
                         >
                           {log.success ? "SUCCESS" : "FAILED"}
                         </span>
+                        {log.deliveryMethod && (
+                          <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-bold text-gray-700">
+                            {log.deliveryMethod}
+                          </span>
+                        )}
                         {log.apiSetting && <span className="font-semibold">{log.apiSetting.name}</span>}
                         {log.denom && <span>Denom: {log.denom}</span>}
                         {log.statusCode !== null && <span>HTTP {log.statusCode}</span>}
@@ -254,6 +280,9 @@ export default async function AdminOrdersPage({
                           })}
                         </span>
                       </div>
+                      {log.errorMessage && (
+                        <p className="mb-1 font-semibold text-red-700">Error: {log.errorMessage}</p>
+                      )}
                       {log.requestBody && (
                         <pre className="mb-1 max-h-32 overflow-auto rounded bg-white p-1.5 font-mono text-[10px] whitespace-pre-wrap">
                           {log.requestBody}

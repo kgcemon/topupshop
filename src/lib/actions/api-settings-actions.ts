@@ -12,10 +12,9 @@ async function requireAdmin() {
   return session;
 }
 
-const API_SETTING_TYPES = ["UNIPIN", "GARENA_SHELL", "OTHER"] as const;
+const API_SETTING_TYPES = ["UNIPIN", "SHELL", "GARENA_SHELL", "OTHER"] as const;
 
-export async function createApiSettingAction(formData: FormData) {
-  await requireAdmin();
+function parseApiSettingForm(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
   const typeRaw = String(formData.get("type") || "OTHER");
   const type = API_SETTING_TYPES.includes(typeRaw as (typeof API_SETTING_TYPES)[number])
@@ -24,6 +23,13 @@ export async function createApiSettingAction(formData: FormData) {
   const apiKey = String(formData.get("apiKey") || "").trim();
   const apiSecret = String(formData.get("apiSecret") || "").trim();
   const endpoint = String(formData.get("endpoint") || "").trim();
+  const code = String(formData.get("code") || "").trim();
+  return { name, type, apiKey, apiSecret, endpoint, code };
+}
+
+export async function createApiSettingAction(formData: FormData) {
+  await requireAdmin();
+  const { name, type, apiKey, apiSecret, endpoint, code } = parseApiSettingForm(formData);
   if (!name) return;
 
   await prisma.apiSetting.create({
@@ -33,6 +39,29 @@ export async function createApiSettingAction(formData: FormData) {
       apiKey: apiKey || null,
       apiSecret: apiSecret || null,
       endpoint: endpoint || null,
+      code: code || null,
+    },
+  });
+
+  revalidatePath("/admin/api-settings");
+}
+
+export async function updateApiSettingAction(formData: FormData) {
+  await requireAdmin();
+  const id = Number(formData.get("id"));
+  if (!Number.isFinite(id)) return;
+  const { name, type, apiKey, apiSecret, endpoint, code } = parseApiSettingForm(formData);
+  if (!name) return;
+
+  await prisma.apiSetting.update({
+    where: { id },
+    data: {
+      name,
+      type,
+      apiKey: apiKey || null,
+      apiSecret: apiSecret || null,
+      endpoint: endpoint || null,
+      code: code || null,
     },
   });
 

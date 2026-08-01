@@ -5,11 +5,12 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { orderSchema, guestContactSchema } from "@/lib/validation";
-import { generateOrderNumber } from "@/lib/utils";
+import { generateOrderNumber, formatOrderNumber } from "@/lib/utils";
 import { getClientIp } from "@/lib/rate-limit";
 import { isIpBlocked, applyAbuseBlock, detectMaliciousInput } from "@/lib/security";
 import type { ActionState } from "@/lib/actions/auth-actions";
-import { fulfillUnipinOrder } from "@/lib/unipin-fulfillment";
+import { fulfillOrder } from "@/lib/order-fulfillment";
+import { notifyAdmins } from "@/lib/notifications";
 
 export type OrderActionState = ActionState & {
   order?: {
@@ -202,17 +203,25 @@ export async function placeOrderAction(
     throw error;
   }
 
-  // A WALLET order is auto-approved above — immediately attempt Unipin
-  // fulfillment too, same as an admin approving a manual order, so the buyer
-  // doesn't end up silently stuck at APPROVED until an admin happens to
-  // resubmit the status form. Runs outside the transaction above since it may
-  // call a live API.
+  // A WALLET order is auto-approved above — immediately attempt fulfillment
+  // too (via whichever delivery method this option uses), same as an admin
+  // approving a manual order, so the buyer doesn't end up silently stuck at
+  // APPROVED until an admin happens to resubmit the status form. Runs outside
+  // the transaction above since it may call a live API.
   let finalStatus: string = createdOrder.status;
   if (createdOrder.status === "APPROVED") {
-    const result = await fulfillUnipinOrder(createdOrder.id);
+    const result = await fulfillOrder(createdOrder.id, option.deliveryMethod);
     if (result.status === "fulfilled" || result.status === "already-fulfilled") {
       await prisma.order.update({ where: { id: createdOrder.id }, data: { status: "RUNNING" } });
       finalStatus = "RUNNING";
+    } else if (result.status === "insufficient" || result.status === "failed") {
+      await notifyAdmins(prisma, {
+        type: "ORDER_FULFILLMENT_ISSUE",
+        message: `⚠️ অর্ডার ${formatOrderNumber(createdOrder.orderSerial)} (${option.deliveryMethod}) fulfillment ব্যর্থ: ${
+          result.status === "insufficient" ? "পর্যাপ্ত stock/config নেই" : result.error ?? "API call ব্যর্থ"
+        }`,
+        link: "/admin/orders?status=APPROVED",
+      });
     }
   }
 

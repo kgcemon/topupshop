@@ -36,42 +36,37 @@ export async function purchaseUnipinCode(params: {
     await logApiCall({
       orderId: params.orderId,
       apiSettingId: params.apiSettingId,
+      deliveryMethod: "UNIPIN",
       denom: params.denom,
       requestBody,
-      responseBody: message,
+      errorMessage: message,
       success: false,
     });
     return { success: false, error: message };
   }
 
   const text = await response.text();
+
+  // Determine the true final outcome (including "response was OK but had no
+  // usable code") before logging, so `success`/`errorMessage` always reflect
+  // what actually happened rather than just the HTTP status.
+  const result: PurchaseResult = !response.ok
+    ? { success: false, error: `HTTP ${response.status}` }
+    : parseUnipinResponse(text);
+
   await logApiCall({
     orderId: params.orderId,
     apiSettingId: params.apiSettingId,
+    deliveryMethod: "UNIPIN",
     denom: params.denom,
     requestBody,
     responseBody: text,
     statusCode: response.status,
-    success: response.ok,
+    errorMessage: result.success ? undefined : result.error,
+    success: result.success,
   });
 
-  if (!response.ok) {
-    return { success: false, error: `HTTP ${response.status}` };
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    return { success: false, error: "Response was not valid JSON" };
-  }
-
-  const code = extractCode(parsed);
-  if (!code) {
-    return { success: false, error: "No code/pin/voucher field found in response" };
-  }
-
-  return { success: true, code };
+  return result;
 }
 
 function extractCode(payload: unknown): string | null {
@@ -83,4 +78,15 @@ function extractCode(payload: unknown): string | null {
   }
   if (obj.data && typeof obj.data === "object") return extractCode(obj.data);
   return null;
+}
+
+function parseUnipinResponse(text: string): PurchaseResult {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return { success: false, error: "Response was not valid JSON" };
+  }
+  const code = extractCode(parsed);
+  return code ? { success: true, code } : { success: false, error: "No code/pin/voucher field found in response" };
 }

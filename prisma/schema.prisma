@@ -161,15 +161,22 @@ model Product {
   @@index([sectionId, isActive, sortOrder])
 }
 
+enum DeliveryMethod {
+  UNIPIN
+  SHELL
+  MANUAL // no automation — admin fulfills by hand and marks the order DELIVERED
+}
+
 model RechargeOption {
-  id        Int     @id @default(autoincrement())
-  productId Int
-  label     String
-  price     Int // in BDT
-  stock     Int? // remaining units; null = unlimited (not stock-managed)
-  denom     String? // Unipin denom recipe for this option — comma-separated (e.g. "4,4,5") when the pack is fulfilled from multiple smaller vouchers
-  isActive  Boolean @default(true)
-  sortOrder Int     @default(0)
+  id             Int            @id @default(autoincrement())
+  productId      Int
+  label          String
+  price          Int // in BDT
+  stock          Int? // remaining units; null = unlimited (not stock-managed)
+  denom          String? // Unipin denom recipe for this option — comma-separated (e.g. "4,4,5") when the pack is fulfilled from multiple smaller vouchers. Only meaningful when deliveryMethod = UNIPIN.
+  deliveryMethod DeliveryMethod @default(MANUAL)
+  isActive       Boolean        @default(true)
+  sortOrder      Int            @default(0)
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   orders  Order[]
@@ -214,6 +221,8 @@ model Order {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
+  shellClaimedAt DateTime? // set atomically right before calling the Shell API for this order; guards against a second concurrent/retried call. Reset to null on failure so a legitimate retry can re-claim.
+
   user                User?          @relation(fields: [userId], references: [id])
   product             Product        @relation(fields: [productId], references: [id])
   rechargeOption      RechargeOption @relation(fields: [rechargeOptionId], references: [id])
@@ -252,12 +261,14 @@ model UnipinCode {
 
 enum ApiSettingType {
   UNIPIN
-  GARENA_SHELL
+  GARENA_SHELL // legacy/unused value, unrelated to the Shell delivery method below — do not repurpose. Kept for the separate manual GarenaShellAccount vault feature.
+  SHELL // automatable Shell top-up API config, used only by orders with RechargeOption.deliveryMethod = SHELL. Fully separate from GARENA_SHELL and from UNIPIN.
   OTHER
 }
 
 // Registry of external top-up API credentials, prepared ahead of wiring up
-// live automation (see UnipinCode.source).
+// live automation (see UnipinCode.source). For SHELL rows: endpoint = API URL,
+// apiKey = UserID, apiSecret = Password, code = code (spec's 4 Shell fields).
 model ApiSetting {
   id        Int            @id @default(autoincrement())
   name      String
@@ -265,6 +276,7 @@ model ApiSetting {
   apiKey    String?        @db.Text
   apiSecret String?        @db.Text
   endpoint  String?
+  code      String?        @db.Text // Shell-specific "code" field; unused for UNIPIN/OTHER rows
   isActive  Boolean        @default(true)
   createdAt DateTime       @default(now())
 
@@ -273,18 +285,19 @@ model ApiSetting {
 
 // Raw request/response trail for every external API call made while fulfilling
 // an order — kept for debugging when a callback is missing or a code purchase
-// fails, per an order stuck in RUNNING. Written by the future automation code
-// via logApiCall() (src/lib/api-log.ts); no live caller exists yet.
+// fails, per an order stuck in APPROVED. Written via logApiCall() (src/lib/api-log.ts).
 model ApiCallLog {
-  id           String   @id @default(cuid())
-  orderId      String?
-  apiSettingId Int?
-  denom        String?
-  requestBody  String?  @db.Text
-  responseBody String?  @db.Text
-  statusCode   Int?
-  success      Boolean  @default(false)
-  createdAt    DateTime @default(now())
+  id             String          @id @default(cuid())
+  orderId        String?
+  apiSettingId   Int?
+  deliveryMethod DeliveryMethod? // UNIPIN or SHELL; null for pre-refactor rows
+  denom          String?
+  requestBody    String?         @db.Text
+  responseBody   String?         @db.Text
+  statusCode     Int?
+  errorMessage   String?         @db.Text
+  success        Boolean         @default(false)
+  createdAt      DateTime        @default(now())
 
   order      Order?      @relation(fields: [orderId], references: [id], onDelete: SetNull)
   apiSetting ApiSetting? @relation(fields: [apiSettingId], references: [id], onDelete: SetNull)
@@ -426,6 +439,7 @@ enum NotificationType {
   ORDER_COMPLETED
   ORDER_NOTE
   ADMIN_ANNOUNCEMENT
+  ORDER_FULFILLMENT_ISSUE // admin-only: an order's delivery API failed or had insufficient stock/config
 }
 
 model Notification {

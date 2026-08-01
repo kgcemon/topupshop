@@ -1,11 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { purchaseUnipinCode } from "@/lib/unipin-client";
+import type { FulfillmentResult } from "@/lib/order-fulfillment";
 
-export type FulfillmentResult =
-  | { status: "already-fulfilled" }
-  | { status: "not-applicable" }
-  | { status: "fulfilled" }
-  | { status: "insufficient" };
+class InsufficientStockError extends Error {}
 
 function parseDenomRecipe(denom: string | null): string[] {
   return (denom ?? "")
@@ -69,32 +66,62 @@ export async function fulfillUnipinOrder(orderId: string): Promise<FulfillmentRe
     }
   }
 
-  // Atomically claim from whatever's now available (local + freshly bought).
-  return prisma.$transaction(async (tx) => {
-    const stillLinked = await tx.unipinCode.count({ where: { usedForOrderId: order.id } });
-    if (stillLinked > 0) return { status: "already-fulfilled" as const };
+  // Atomically claim from whatever's now available (local + freshly bought),
+  // using real row-level locking (SELECT ... FOR UPDATE) so two orders can
+  // never end up claiming the same code. A single bounded retry absorbs the
+  // rare case where two orders racing for the same denom pool right at its
+  // capacity boundary both come up short on their first pre-lock candidate
+  // window — that only ever produces an extra "insufficient" outcome, never
+  // a double-allocation or partial commit.
+  const MAX_ATTEMPTS = 2;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      return await prisma.$transaction(async (tx) => {
+        // 1. Lock Order — serializes any concurrent/retried call for this
+        // exact order (API timeout retry, queue retry, cron re-run), on top
+        // of the caller's own optimistic status claim.
+        await tx.$queryRawUnsafe('SELECT id FROM `Order` WHERE id = ? FOR UPDATE', order.id);
 
-    const denoms = [...neededByDenom.keys()];
-    const counts = await Promise.all(
-      denoms.map((denom) => tx.unipinCode.count({ where: { denom, status: "UNUSED" } }))
-    );
-    const fullyStocked = denoms.every((denom, i) => counts[i] >= (neededByDenom.get(denom) ?? 0));
-    if (!fullyStocked) return { status: "insufficient" as const };
+        const stillLinked = await tx.unipinCode.count({ where: { usedForOrderId: order.id } });
+        if (stillLinked > 0) return { status: "already-fulfilled" as const };
 
-    const claimedIds: string[] = [];
-    for (const [denom, needed] of neededByDenom) {
-      const picks = await tx.unipinCode.findMany({
-        where: { denom, status: "UNUSED" },
-        orderBy: { createdAt: "asc" },
-        take: needed,
-        select: { id: true },
+        const claimedIds: string[] = [];
+        for (const [denom, needed] of neededByDenom) {
+          // 2. Lock required UniPin rows + select unused codes in one locking
+          // read. A locking read always returns the LATEST committed column
+          // values once the lock is granted, so re-checking `status` on the
+          // result (rather than trusting the pre-lock WHERE match) is what
+          // makes this race-safe: a second concurrent claim for the same
+          // denom blocks here until the first transaction commits, then sees
+          // those exact rows as already USED and picks different ones.
+          const locked = await tx.$queryRawUnsafe<{ id: string; status: string }[]>(
+            "SELECT id, status FROM `UnipinCode` WHERE denom = ? AND status = ? ORDER BY createdAt ASC LIMIT ? FOR UPDATE",
+            denom,
+            "UNUSED",
+            needed
+          );
+          const stillUnused = locked.filter((row) => row.status === "UNUSED");
+          if (stillUnused.length < needed) {
+            throw new InsufficientStockError(denom);
+          }
+          claimedIds.push(...stillUnused.map((row) => row.id));
+        }
+
+        // 3. Mark used + assign to order immediately, inside the same
+        // transaction that holds the row locks — never wait for the API
+        // call's success/failure to do this, since another order could
+        // otherwise grab the same code in the meantime.
+        await tx.unipinCode.updateMany({
+          where: { id: { in: claimedIds }, status: "UNUSED" }, // defensive filter on top of the already-locked/verified rows
+          data: { status: "USED", usedAt: new Date(), usedForOrderId: order.id },
+        });
+        return { status: "fulfilled" as const };
       });
-      claimedIds.push(...picks.map((p) => p.id));
+    } catch (error) {
+      if (!(error instanceof InsufficientStockError)) throw error;
+      // fall through to retry (or exit the loop after the last attempt)
     }
-    await tx.unipinCode.updateMany({
-      where: { id: { in: claimedIds } },
-      data: { status: "USED", usedAt: new Date(), usedForOrderId: order.id },
-    });
-    return { status: "fulfilled" as const };
-  });
+  }
+
+  return { status: "insufficient" };
 }

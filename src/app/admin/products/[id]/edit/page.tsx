@@ -7,6 +7,7 @@ import {
   deleteRechargeOptionAction,
   updateRechargeOptionStockAction,
   updateRechargeOptionDenomAction,
+  updateRechargeOptionDeliveryMethodAction,
 } from "@/lib/actions/admin-actions";
 import { formatTaka } from "@/lib/utils";
 import { getAllSections } from "@/lib/data";
@@ -78,6 +79,17 @@ export default async function EditProductPage({
                     </span>
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                        option.deliveryMethod === "UNIPIN"
+                          ? "bg-blue-100 text-blue-700"
+                          : option.deliveryMethod === "SHELL"
+                            ? "bg-purple-100 text-purple-700"
+                            : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {option.deliveryMethod}
+                    </span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-bold ${
                         option.denom ? "bg-primary-50 text-primary-700" : "bg-gray-100 text-gray-500"
                       }`}
                     >
@@ -86,6 +98,22 @@ export default async function EditProductPage({
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
+                  <form action={updateRechargeOptionDeliveryMethodAction} className="flex items-center gap-1">
+                    <input type="hidden" name="optionId" value={option.id} />
+                    <input type="hidden" name="productId" value={product.id} />
+                    <select
+                      name="deliveryMethod"
+                      defaultValue={option.deliveryMethod}
+                      className="rounded-md border border-gray-300 px-2 py-1 text-xs"
+                    >
+                      <option value="UNIPIN">UniPin</option>
+                      <option value="SHELL">Shell</option>
+                      <option value="MANUAL">Manual</option>
+                    </select>
+                    <button className="rounded-md border border-gray-300 px-2 py-1 text-xs font-bold hover:bg-gray-50">
+                      Update Method
+                    </button>
+                  </form>
                   <form action={updateRechargeOptionStockAction} className="flex items-center gap-1">
                     <input type="hidden" name="optionId" value={option.id} />
                     <input type="hidden" name="productId" value={product.id} />
@@ -160,6 +188,18 @@ export default async function EditProductPage({
               placeholder="Unlimited"
               className="w-32 rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold">Delivery Method</label>
+            <select
+              name="deliveryMethod"
+              defaultValue="MANUAL"
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+            >
+              <option value="UNIPIN">UniPin</option>
+              <option value="SHELL">Shell</option>
+              <option value="MANUAL">Manual</option>
+            </select>
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold">Unipin Denom(s), comma-separated</label>

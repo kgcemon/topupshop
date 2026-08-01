@@ -2,12 +2,14 @@ import { prisma } from "@/lib/prisma";
 import { SecretField } from "@/components/secret-field";
 import {
   createApiSettingAction,
+  updateApiSettingAction,
   toggleApiSettingActiveAction,
   deleteApiSettingAction,
 } from "@/lib/actions/api-settings-actions";
 
 const TYPE_LABELS: Record<string, string> = {
   UNIPIN: "Unipin",
+  SHELL: "Shell (New)",
   GARENA_SHELL: "Garena Shell",
   OTHER: "Other",
 };
@@ -33,25 +35,30 @@ export default async function AdminApiSettingsPage() {
             <label className="mb-1 block text-xs font-semibold">Type</label>
             <select name="type" className="rounded-md border border-gray-300 px-3 py-2 text-sm">
               <option value="UNIPIN">Unipin</option>
+              <option value="SHELL">Shell (New)</option>
               <option value="GARENA_SHELL">Garena Shell</option>
               <option value="OTHER">Other</option>
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-semibold">API Key</label>
-            <input name="apiKey" className="w-40 rounded-md border border-gray-300 px-3 py-2 text-sm" />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold">API Secret</label>
-            <input name="apiSecret" className="w-40 rounded-md border border-gray-300 px-3 py-2 text-sm" />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold">Endpoint</label>
+            <label className="mb-1 block text-xs font-semibold">API URL / Endpoint</label>
             <input
               name="endpoint"
               placeholder="https://..."
               className="w-52 rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold">API Key / UserID</label>
+            <input name="apiKey" className="w-40 rounded-md border border-gray-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold">API Secret / Password</label>
+            <input name="apiSecret" className="w-40 rounded-md border border-gray-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold">Code (Shell only)</label>
+            <input name="code" className="w-32 rounded-md border border-gray-300 px-3 py-2 text-sm" />
           </div>
           <button className="rounded-md bg-primary-500 px-4 py-2 text-sm font-bold text-white hover:bg-primary-600">
             + Add
@@ -100,20 +107,88 @@ export default async function AdminApiSettingsPage() {
                 </form>
               </div>
             </div>
-            <div className="grid grid-cols-1 gap-1.5 text-xs sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-1.5 text-xs sm:grid-cols-4">
               <div>
-                <p className="mb-0.5 text-[10px] text-gray-500">API Key</p>
+                <p className="mb-0.5 text-[10px] text-gray-500">API URL / Endpoint</p>
+                <p className="truncate font-mono text-xs">{setting.endpoint || "—"}</p>
+              </div>
+              <div>
+                <p className="mb-0.5 text-[10px] text-gray-500">API Key / UserID</p>
                 <SecretField value={setting.apiKey} />
               </div>
               <div>
-                <p className="mb-0.5 text-[10px] text-gray-500">API Secret</p>
+                <p className="mb-0.5 text-[10px] text-gray-500">API Secret / Password</p>
                 <SecretField value={setting.apiSecret} />
               </div>
               <div>
-                <p className="mb-0.5 text-[10px] text-gray-500">Endpoint</p>
-                <p className="truncate font-mono text-xs">{setting.endpoint || "—"}</p>
+                <p className="mb-0.5 text-[10px] text-gray-500">Code</p>
+                <SecretField value={setting.code} />
               </div>
             </div>
+
+            <details className="pt-1">
+              <summary className="cursor-pointer text-xs font-bold text-primary-600">Edit</summary>
+              <form action={updateApiSettingAction} className="mt-2 flex flex-wrap items-end gap-2">
+                <input type="hidden" name="id" value={setting.id} />
+                <div>
+                  <label className="mb-1 block text-[10px] font-semibold">Name</label>
+                  <input
+                    name="name"
+                    required
+                    defaultValue={setting.name}
+                    className="w-36 rounded-md border border-gray-300 px-2 py-1.5 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[10px] font-semibold">Type</label>
+                  <select
+                    name="type"
+                    defaultValue={setting.type}
+                    className="rounded-md border border-gray-300 px-2 py-1.5 text-xs"
+                  >
+                    <option value="UNIPIN">Unipin</option>
+                    <option value="SHELL">Shell (New)</option>
+                    <option value="GARENA_SHELL">Garena Shell</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[10px] font-semibold">API URL</label>
+                  <input
+                    name="endpoint"
+                    defaultValue={setting.endpoint ?? ""}
+                    className="w-44 rounded-md border border-gray-300 px-2 py-1.5 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[10px] font-semibold">Key / UserID</label>
+                  <input
+                    name="apiKey"
+                    defaultValue={setting.apiKey ?? ""}
+                    className="w-32 rounded-md border border-gray-300 px-2 py-1.5 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[10px] font-semibold">Secret / Password</label>
+                  <input
+                    name="apiSecret"
+                    defaultValue={setting.apiSecret ?? ""}
+                    className="w-32 rounded-md border border-gray-300 px-2 py-1.5 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[10px] font-semibold">Code</label>
+                  <input
+                    name="code"
+                    defaultValue={setting.code ?? ""}
+                    className="w-28 rounded-md border border-gray-300 px-2 py-1.5 text-xs"
+                  />
+                </div>
+                <button className="rounded-md bg-primary-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-primary-600">
+                  Save
+                </button>
+              </form>
+            </details>
           </div>
         ))}
       </div>
