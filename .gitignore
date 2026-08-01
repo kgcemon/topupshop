@@ -20,6 +20,9 @@
 # production
 /build
 
+# runtime-uploaded files (see src/lib/upload.ts)
+/uploads
+
 # misc
 .DS_Store
 *.pem

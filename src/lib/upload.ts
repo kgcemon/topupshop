@@ -2,7 +2,12 @@ import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import sharp from "sharp";
 
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
+// Deliberately kept outside `public/`: in production `next start` snapshots the
+// public directory's file list once at boot (for its static-file route check), so
+// files written here at runtime would 404 until the process restarts. Serving
+// through the app/uploads route handler instead reads the file fresh on every
+// request. See src/app/uploads/[filename]/route.ts.
+export const UPLOAD_DIR = path.join(process.cwd(), "uploads");
 const MAX_SIZE_BYTES = 8 * 1024 * 1024; // 8MB
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
@@ -22,7 +27,7 @@ function extensionFor(file: File) {
   return fromType ? `.${fromType}` : ".jpg";
 }
 
-/** Saves an uploaded image to public/uploads and returns its public URL path, or null if no file was given. */
+/** Saves an uploaded image to the uploads directory and returns its public URL path, or null if no file was given. */
 export async function saveUploadedImage(file: File | null, prefix: string): Promise<string | null> {
   if (!file || file.size === 0) return null;
 
