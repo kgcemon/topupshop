@@ -195,7 +195,7 @@ export async function getBlogPostBySlug(slug: string) {
   });
 }
 
-export async function getUserNotifications(userId: string, limit = 8) {
+export async function getUserNotifications(userId: string, limit = 5) {
   return prisma.notification.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },

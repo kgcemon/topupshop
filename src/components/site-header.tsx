@@ -35,7 +35,6 @@ export async function SiteHeader() {
               alt="Uc Ghor Logo"
               width={192}
               height={56}
-              priority
               className="w-40 md:w-48 h-auto"
             />
           </Link>
