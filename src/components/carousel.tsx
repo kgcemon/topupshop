@@ -26,21 +26,30 @@ export function Carousel({ slides }: { slides: Slide[] }) {
             className="flex transition-transform duration-500 ease-in-out"
             style={{ transform: `translateX(-${index * 100}%)` }}
           >
-            {slides.map((slide) => (
-              <div
-                key={slide.id}
-                className="relative aspect-[21/9] w-full shrink-0 md:aspect-auto md:h-[340px]"
-              >
-                <Image
-                  src={slide.image}
-                  alt="Banner"
-                  fill
-                  sizes="(min-width: 768px) 1200px, 100vw"
-                  priority={slide.id === slides[0].id}
-                  className="object-cover"
-                />
-              </div>
-            ))}
+            {slides.map((slide) => {
+              const isFirst = slide.id === slides[0].id;
+              return (
+                <div
+                  key={slide.id}
+                  className="relative aspect-[21/9] w-full shrink-0 md:aspect-auto md:h-[340px]"
+                >
+                  <Image
+                    src={slide.image}
+                    alt="Banner"
+                    fill
+                    sizes="(min-width: 768px) 1200px, 100vw"
+                    // `priority` was deprecated in Next.js 16 in favor of `preload`
+                    // — and unlike the old `priority` prop, neither `preload` nor
+                    // `priority` auto-sets `fetchPriority` anymore, so it has to be
+                    // passed explicitly for the LCP image to actually get
+                    // fetchpriority="high" in the rendered HTML.
+                    preload={isFirst}
+                    fetchPriority={isFirst ? "high" : undefined}
+                    className="object-cover"
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
 

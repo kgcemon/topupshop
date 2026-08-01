@@ -136,7 +136,10 @@ export default async function BlogPostPage({
               fill
               sizes="(max-width: 768px) 100vw, 768px"
               className="object-cover"
-              priority
+              // See carousel.tsx — `priority` is deprecated in Next.js 16 and no
+              // longer auto-sets fetchPriority, so it's passed explicitly here.
+              preload
+              fetchPriority="high"
             />
           </div>
         ) : (
