@@ -28,22 +28,33 @@ export function InstallAppPopup() {
   if (!visible) return null;
 
   return (
-    <div className="fixed right-4 bottom-36 z-40 max-w-[300px] rounded-lg bg-primary-500 p-4 text-white shadow-lg md:bottom-24">
-      <div className="mb-1 flex items-center justify-between">
-        <p className="font-bold">Install App</p>
-        <button aria-label="বন্ধ করুন" onClick={dismiss}>
-          ✕
-        </button>
-      </div>
-      <p className="mb-3 text-sm">Install our app for a better experience</p>
-      <button
-        onClick={dismiss}
-        className="flex w-full items-center justify-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-bold text-primary-600"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+    <div className="fixed inset-x-3 bottom-36 z-40 flex items-center gap-3 rounded-xl bg-primary-500 p-3 text-white shadow-lg md:inset-x-auto md:right-5 md:bottom-24 md:w-80">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/15">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
           <path d="M12 16l4-5h-3V4h-2v7H8l4 5zm-7 2h14v2H5v-2z" />
         </svg>
-        Install Now
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-bold">Install App</p>
+        <p className="truncate text-xs text-white/80">দ্রুত ও ভালো অভিজ্ঞতার জন্য</p>
+      </div>
+
+      <button
+        onClick={dismiss}
+        className="shrink-0 rounded-md bg-white px-3 py-1.5 text-xs font-bold text-primary-600"
+      >
+        Install
+      </button>
+
+      <button
+        aria-label="বন্ধ করুন"
+        onClick={dismiss}
+        className="shrink-0 rounded-full p-1 text-white/80 hover:bg-white/15 hover:text-white"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
       </button>
     </div>
   );
