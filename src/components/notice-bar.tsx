@@ -8,7 +8,7 @@ export function NoticeBar({ message }: { message: string }) {
 
   return (
     <div className="container mx-auto mt-4 px-3 md:px-4">
-      <div className="flex items-start justify-between gap-3 rounded-lg bg-primary-500 px-3 py-1 md:px-4 md:py-3">
+      <div className="flex items-start justify-between gap-3 rounded-lg bg-primary-500 px-3 py-2.5 md:px-4 md:py-3">
         <p className="text-xs text-white md:text-sm">
           <span className="font-bold">Notice: </span>
           {message}

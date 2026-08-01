@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-function buildNav(pendingOrders: number, pendingWalletRequests: number) {
+function buildNav(pendingOrders: number, pendingWalletRequests: number, pendingReviews: number) {
   return [
     { href: "/admin", label: "Dashboard", badge: 0 },
     { href: "/admin/orders", label: "Orders", badge: pendingOrders },
@@ -22,6 +22,7 @@ function buildNav(pendingOrders: number, pendingWalletRequests: number) {
     { href: "/admin/blog", label: "Blog", badge: 0 },
     { href: "/admin/banners", label: "Banners", badge: 0 },
     { href: "/admin/notices", label: "Notices", badge: 0 },
+    { href: "/admin/reviews", label: "Reviews", badge: pendingReviews },
     { href: "/admin/settings", label: "Settings", badge: 0 },
   ];
 }
@@ -32,12 +33,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect("/dashboard");
   }
 
-  const [pendingOrders, pendingWalletRequests] = await Promise.all([
+  const [pendingOrders, pendingWalletRequests, pendingReviews] = await Promise.all([
     prisma.order.count({ where: { status: "PENDING" } }),
     prisma.walletTransaction.count({ where: { type: "DEPOSIT", status: "PENDING" } }),
+    prisma.review.count({ where: { isApproved: false } }),
   ]);
 
-  const NAV = buildNav(pendingOrders, pendingWalletRequests);
+  const NAV = buildNav(pendingOrders, pendingWalletRequests, pendingReviews);
 
   return (
     <div className="container mx-auto px-4 py-8">

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 type Settings = {
   siteName: string;
@@ -12,7 +13,7 @@ type Settings = {
 export function SiteFooter({ settings }: { settings: Settings }) {
   return (
     <footer className="border-t border-gray-200 bg-white">
-      <div className="container mx-auto px-4 py-10 grid md:grid-cols-2 gap-8">
+      <div className="container mx-auto px-4 py-10 grid gap-8 md:grid-cols-3">
         <div>
           <Image
             src="/images/logo.png"
@@ -32,6 +33,29 @@ export function SiteFooter({ settings }: { settings: Settings }) {
             যেকোনো প্রয়োজনে আমাদের এই হোয়াটসঅ্যাপে যোগাযোগ করবেন।
           </p>
           <p className="text-sm font-bold">{settings.whatsappNumber}</p>
+        </div>
+        <div>
+          <h2 className="text-xl font-bold mb-4">Company</h2>
+          <div className="space-y-2.5 text-sm">
+            <Link href="/about-us" className="block text-gray-600 hover:text-primary-600">
+              About Us
+            </Link>
+            <Link href="/contact-us" className="block text-gray-600 hover:text-primary-600">
+              Contact Us
+            </Link>
+            <Link href="/blog" className="block text-gray-600 hover:text-primary-600">
+              Blog
+            </Link>
+            <Link href="/terms-and-conditions" className="block text-gray-600 hover:text-primary-600">
+              Terms &amp; Conditions
+            </Link>
+            <Link href="/privacy-policy" className="block text-gray-600 hover:text-primary-600">
+              Privacy Policy
+            </Link>
+            <Link href="/refund-policy" className="block text-gray-600 hover:text-primary-600">
+              Refund Policy
+            </Link>
+          </div>
         </div>
         <div>
           <h2 className="text-xl font-bold mb-4">Contact Us</h2>

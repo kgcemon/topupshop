@@ -92,6 +92,7 @@ model User {
   notifications        Notification[]      @relation("UserNotifications")
   sentNotifications    Notification[]      @relation("ActorNotifications")
   loginLogs            LoginLog[]
+  reviews              Review[]
 }
 
 // Per-login activity trail — pruned in application code (see recordLoginActivity)
@@ -157,6 +158,7 @@ model Product {
   section         Section          @relation(fields: [sectionId], references: [id])
   rechargeOptions RechargeOption[]
   orders          Order[]
+  reviews         Review[]
 
   @@index([sectionId, isActive, sortOrder])
 }
@@ -467,6 +469,28 @@ model BlogLike {
 
   @@unique([postId, userId])
   @@index([postId])
+}
+
+// Per-product review, shown on that product's topup page and surfaced to
+// Google as Product AggregateRating/Review structured data there. One review
+// per user per product — resubmitting edits the existing row rather than
+// creating a new one — and every create/edit goes back to isApproved = false
+// pending re-moderation.
+model Review {
+  id         String   @id @default(cuid())
+  productId  Int
+  userId     String
+  rating     Int // 1-5
+  comment    String   @db.Text
+  isApproved Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, userId])
+  @@index([productId, isApproved, createdAt])
 }
 
 enum NotificationType {

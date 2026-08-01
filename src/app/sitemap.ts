@@ -9,10 +9,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     getAllPublishedBlogPostsForSitemap(),
   ]);
 
+  const now = new Date();
+  const legalPagesUpdatedAt = new Date("2026-08-01");
+
   const staticRoutes: MetadataRoute.Sitemap = [
-    { url: siteUrl, changeFrequency: "daily", priority: 1 },
-    { url: `${siteUrl}/blog`, changeFrequency: "daily", priority: 0.7 },
+    { url: siteUrl, lastModified: now, changeFrequency: "daily", priority: 1 },
+    { url: `${siteUrl}/blog`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
+    { url: `${siteUrl}/about-us`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${siteUrl}/contact-us`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${siteUrl}/terms-and-conditions`, lastModified: legalPagesUpdatedAt, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${siteUrl}/privacy-policy`, lastModified: legalPagesUpdatedAt, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${siteUrl}/refund-policy`, lastModified: legalPagesUpdatedAt, changeFrequency: "yearly", priority: 0.3 },
     { url: `${siteUrl}/login`, changeFrequency: "yearly", priority: 0.2 },
     { url: `${siteUrl}/register`, changeFrequency: "yearly", priority: 0.2 },
   ];

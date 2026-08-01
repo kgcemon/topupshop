@@ -2,9 +2,18 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { getProductById, getSiteSettings } from "@/lib/data";
+import {
+  getProductById,
+  getSiteSettings,
+  getApprovedReviewsForProduct,
+  getProductReviewStats,
+  getUserReviewForProduct,
+} from "@/lib/data";
 import { prisma } from "@/lib/prisma";
 import { OrderForm } from "@/components/order-form";
+import { ReviewSection } from "@/components/review-section";
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 type Params = { id: string; slug: string };
 
@@ -57,15 +66,25 @@ export default async function TopupProductPage({
     redirect(`/topup/${product.id}/${product.slug}`);
   }
 
-  const [session, settings] = await Promise.all([auth(), getSiteSettings()]);
+  const [session, settings, reviews, reviewStats] = await Promise.all([
+    auth(),
+    getSiteSettings(),
+    getApprovedReviewsForProduct(product.id, 8),
+    getProductReviewStats(product.id),
+  ]);
 
   let walletBalance = 0;
+  let userReview = null;
   if (session?.user) {
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { walletBalance: true },
-    });
+    const [user, existingReview] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { walletBalance: true },
+      }),
+      getUserReviewForProduct(product.id, session.user.id),
+    ]);
     walletBalance = user?.walletBalance ?? 0;
+    userReview = existingReview;
   }
 
   const rules = Array.isArray(product.rules) ? (product.rules as string[]) : [];
@@ -84,6 +103,41 @@ export default async function TopupProductPage({
       priceCurrency: "BDT",
       availability: "https://schema.org/InStock",
     })),
+    // Only attach rating markup once real approved reviews exist for this
+    // product — must always mirror what's actually visible on the page.
+    ...(reviewStats.count > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: reviewStats.average.toFixed(1),
+            reviewCount: reviewStats.count,
+            bestRating: "5",
+            worstRating: "1",
+          },
+          review: reviews.map((r) => ({
+            "@type": "Review",
+            reviewRating: {
+              "@type": "Rating",
+              ratingValue: r.rating,
+              bestRating: "5",
+              worstRating: "1",
+            },
+            author: { "@type": "Person", name: r.user.name || "Uc Ghor Customer" },
+            reviewBody: r.comment,
+            datePublished: r.createdAt.toISOString(),
+          })),
+        }
+      : {}),
+  };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
+      { "@type": "ListItem", position: 2, name: product.category, item: `${siteUrl}/#topup` },
+      { "@type": "ListItem", position: 3, name: product.name, item: `${siteUrl}/topup/${product.id}/${product.slug}` },
+    ],
   };
 
   return (
@@ -91,6 +145,10 @@ export default async function TopupProductPage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
 
       <div className="mb-6 flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4">
@@ -137,6 +195,16 @@ export default async function TopupProductPage({
           </ul>
         </div>
       )}
+
+      <ReviewSection
+        productId={product.id}
+        loginCallbackPath={`/topup/${product.id}/${product.slug}`}
+        reviews={reviews}
+        average={reviewStats.average}
+        count={reviewStats.count}
+        isLoggedIn={!!session?.user}
+        userReview={userReview}
+      />
     </div>
   );
 }

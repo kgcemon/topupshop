@@ -108,6 +108,12 @@ export const blogCommentSchema = z.object({
   parentId: z.string().trim().optional().or(z.literal("")),
 });
 
+export const reviewFormSchema = z.object({
+  productId: z.coerce.number().int().positive(),
+  rating: z.coerce.number().int().min(1, "রেটিং দিন").max(5, "রেটিং সর্বোচ্চ ৫"),
+  comment: z.string().trim().min(5, "মন্তব্য কমপক্ষে ৫ ক্যারেক্টার লিখুন").max(1000, "মন্তব্য সর্বোচ্চ ১০০০ ক্যারেক্টার হতে পারবে"),
+});
+
 export const siteSettingsSchema = z.object({
   siteName: z.string().trim().min(1, "সাইট নাম আবশ্যক"),
   tagline: z.string().trim().min(1, "ট্যাগলাইন আবশ্যক"),

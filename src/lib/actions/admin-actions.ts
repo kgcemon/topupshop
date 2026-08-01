@@ -17,6 +17,7 @@ import { grantFirstOrderReferralBonus } from "@/lib/referral";
 import { createNotification } from "@/lib/notifications";
 import { formatOrderNumber } from "@/lib/utils";
 import { processOrderFulfillment } from "@/lib/order-fulfillment";
+import { submitToIndexNow } from "@/lib/indexnow";
 
 async function requireAdmin() {
   const session = await auth();
@@ -233,13 +234,19 @@ export async function toggleProductActiveAction(formData: FormData) {
   const isActive = formData.get("isActive") === "true";
   if (!Number.isFinite(productId)) return;
 
-  await prisma.product.update({
+  const product = await prisma.product.update({
     where: { id: productId },
     data: { isActive: !isActive },
   });
 
   revalidatePath("/admin/products");
   revalidatePath("/");
+
+  // Product just went live — worth an immediate ping rather than waiting
+  // for the next scheduled sitemap crawl.
+  if (!isActive) {
+    await submitToIndexNow(`/topup/${product.id}/${product.slug}`);
+  }
 }
 
 export async function toggleProductStockAction(formData: FormData) {
@@ -433,6 +440,9 @@ export async function createProductAction(
 
   revalidatePath("/admin/products");
   revalidatePath("/");
+  if (product.isActive) {
+    await submitToIndexNow(`/topup/${product.id}/${product.slug}`);
+  }
   redirect(`/admin/products/${product.id}/edit`);
 }
 
@@ -467,7 +477,7 @@ export async function updateProductAction(
     return { fieldErrors: { slug: "এই slug ইতিমধ্যে ব্যবহৃত হয়েছে" } };
   }
 
-  await prisma.product.update({
+  const product = await prisma.product.update({
     where: { id: productId },
     data: {
       ...parsed.data,
@@ -480,6 +490,9 @@ export async function updateProductAction(
   revalidatePath("/admin/products");
   revalidatePath(`/admin/products/${productId}/edit`);
   revalidatePath("/");
+  if (product.isActive) {
+    await submitToIndexNow(`/topup/${product.id}/${product.slug}`);
+  }
   return { success: true };
 }
 
@@ -642,6 +655,9 @@ export async function createBlogPostAction(
 
   revalidatePath("/admin/blog");
   revalidatePath("/blog");
+  if (post.isPublished) {
+    await submitToIndexNow([`/blog/${post.slug}`, "/blog"]);
+  }
   redirect(`/admin/blog/${post.id}/edit`);
 }
 
@@ -669,7 +685,7 @@ export async function updateBlogPostAction(
 
   const previous = await prisma.blogPost.findUniqueOrThrow({ where: { id: postId } });
 
-  await prisma.blogPost.update({
+  const post = await prisma.blogPost.update({
     where: { id: postId },
     data: {
       title: parsed.data.title,
@@ -689,6 +705,9 @@ export async function updateBlogPostAction(
   revalidatePath("/blog");
   revalidatePath(`/blog/${previous.slug}`);
   if (previous.slug !== parsed.data.slug) revalidatePath(`/blog/${parsed.data.slug}`);
+  if (post.isPublished) {
+    await submitToIndexNow([`/blog/${post.slug}`, "/blog"]);
+  }
   return { success: true };
 }
 
@@ -697,9 +716,12 @@ export async function toggleBlogPostPublishedAction(formData: FormData) {
   const postId = Number(formData.get("postId"));
   const isPublished = formData.get("isPublished") === "true";
   if (!Number.isFinite(postId)) return;
-  await prisma.blogPost.update({ where: { id: postId }, data: { isPublished: !isPublished } });
+  const post = await prisma.blogPost.update({ where: { id: postId }, data: { isPublished: !isPublished } });
   revalidatePath("/admin/blog");
   revalidatePath("/blog");
+  if (!isPublished) {
+    await submitToIndexNow([`/blog/${post.slug}`, "/blog"]);
+  }
 }
 
 export async function deleteBlogPostAction(formData: FormData) {
@@ -919,6 +941,51 @@ export async function blockUserAction(formData: FormData) {
   });
 
   revalidatePath("/admin/users");
+}
+
+async function revalidateReviewProduct(reviewId: string) {
+  const review = await prisma.review.findUnique({
+    where: { id: reviewId },
+    select: { product: { select: { id: true, slug: true } } },
+  });
+  if (review) revalidatePath(`/topup/${review.product.id}/${review.product.slug}`);
+  return review?.product ?? null;
+}
+
+export async function approveReviewAction(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") || "");
+  if (!id) return;
+
+  const product = await revalidateReviewProduct(id);
+  await prisma.review.update({ where: { id }, data: { isApproved: true } });
+  revalidatePath("/admin/reviews");
+
+  // A newly-approved review changes this product page's visible content and
+  // its Product AggregateRating/Review JSON-LD — worth an immediate ping.
+  if (product) {
+    await submitToIndexNow(`/topup/${product.id}/${product.slug}`);
+  }
+}
+
+export async function unapproveReviewAction(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") || "");
+  if (!id) return;
+
+  await revalidateReviewProduct(id);
+  await prisma.review.update({ where: { id }, data: { isApproved: false } });
+  revalidatePath("/admin/reviews");
+}
+
+export async function deleteReviewAction(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") || "");
+  if (!id) return;
+
+  await revalidateReviewProduct(id);
+  await prisma.review.delete({ where: { id } });
+  revalidatePath("/admin/reviews");
 }
 
 export async function unblockUserAction(formData: FormData) {

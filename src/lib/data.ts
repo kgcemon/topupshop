@@ -238,6 +238,32 @@ export async function getUserReferralStats(userId: string) {
   };
 }
 
+export async function getApprovedReviewsForProduct(productId: number, limit = 12) {
+  return prisma.review.findMany({
+    where: { productId, isApproved: true },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    include: { user: { select: { name: true, image: true } } },
+  });
+}
+
+export async function getProductReviewStats(productId: number) {
+  const result = await prisma.review.aggregate({
+    where: { productId, isApproved: true },
+    _avg: { rating: true },
+    _count: { id: true },
+  });
+
+  return {
+    average: result._avg.rating ?? 0,
+    count: result._count.id,
+  };
+}
+
+export async function getUserReviewForProduct(productId: number, userId: string) {
+  return prisma.review.findUnique({ where: { productId_userId: { productId, userId } } });
+}
+
 export async function getAllPublishedBlogPostsForSitemap() {
   return prisma.blogPost.findMany({
     where: { isPublished: true },
