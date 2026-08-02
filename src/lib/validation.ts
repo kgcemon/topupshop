@@ -138,6 +138,12 @@ export const marketListingFormSchema = z
     path: ["contactNumber"],
   });
 
+export const marketOfferFormSchema = z.object({
+  listingId: z.string().trim().min(1),
+  offerPrice: z.coerce.number().int().min(1, "অফার প্রাইস দিন"),
+  message: z.string().trim().max(500, "মেসেজ সর্বোচ্চ ৫০০ ক্যারেক্টার হতে পারবে").optional().or(z.literal("")),
+});
+
 export const siteSettingsSchema = z.object({
   siteName: z.string().trim().min(1, "সাইট নাম আবশ্যক"),
   tagline: z.string().trim().min(1, "ট্যাগলাইন আবশ্যক"),

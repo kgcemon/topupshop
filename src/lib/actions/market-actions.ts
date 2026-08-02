@@ -4,11 +4,22 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { marketListingFormSchema } from "@/lib/validation";
+import { marketListingFormSchema, marketOfferFormSchema } from "@/lib/validation";
 import type { ActionState } from "@/lib/actions/auth-actions";
 import { saveUploadedImage } from "@/lib/upload";
 
 const MAX_IMAGES = 5;
+
+export type MarketActionState = ActionState & {
+  values?: {
+    game?: string;
+    title?: string;
+    description?: string;
+    price?: string;
+    contactNumber?: string;
+    whatsappNumber?: string;
+  };
+};
 
 async function requireAdmin() {
   const session = await auth();
@@ -42,9 +53,9 @@ async function uploadListingImages(formData: FormData): Promise<string[] | { err
 }
 
 export async function createMarketListingAction(
-  _prevState: ActionState,
+  _prevState: MarketActionState,
   formData: FormData
-): Promise<ActionState> {
+): Promise<MarketActionState> {
   const session = await auth();
   if (!session?.user) {
     return { error: "পোস্ট করতে লগইন করুন।" };
@@ -55,6 +66,15 @@ export async function createMarketListingAction(
     return { error: "মার্কেট ফিচারটি বর্তমানে বন্ধ আছে।" };
   }
 
+  const rawValues = {
+    game: String(formData.get("game") || ""),
+    title: String(formData.get("title") || ""),
+    description: String(formData.get("description") || ""),
+    price: String(formData.get("price") || ""),
+    contactNumber: String(formData.get("contactNumber") || ""),
+    whatsappNumber: String(formData.get("whatsappNumber") || ""),
+  };
+
   const parsed = marketListingFormSchema.safeParse({
     game: formData.get("game"),
     title: formData.get("title"),
@@ -64,12 +84,12 @@ export async function createMarketListingAction(
     whatsappNumber: formData.get("whatsappNumber") || "",
   });
   if (!parsed.success) {
-    return { fieldErrors: fieldErrorsFrom(parsed.error.issues) };
+    return { fieldErrors: fieldErrorsFrom(parsed.error.issues), values: rawValues };
   }
 
   const images = await uploadListingImages(formData);
   if (!Array.isArray(images)) {
-    return { fieldErrors: { images: images.error } };
+    return { fieldErrors: { images: images.error }, values: rawValues };
   }
 
   await prisma.marketListing.create({
@@ -165,6 +185,75 @@ export async function deleteMarketListingAction(formData: FormData) {
 
   revalidatePath("/market");
   revalidatePath("/dashboard/market");
+  revalidatePath("/admin/market");
+}
+
+export type MarketOfferActionState = ActionState & {
+  success?: boolean;
+  values?: { offerPrice?: string; message?: string };
+};
+
+export async function createMarketOfferAction(
+  _prevState: MarketOfferActionState,
+  formData: FormData
+): Promise<MarketOfferActionState> {
+  const session = await auth();
+  if (!session?.user) {
+    return { error: "অফার পাঠাতে লগইন করুন।" };
+  }
+
+  const rawValues = {
+    offerPrice: String(formData.get("offerPrice") || ""),
+    message: String(formData.get("message") || ""),
+  };
+
+  const parsed = marketOfferFormSchema.safeParse({
+    listingId: formData.get("listingId"),
+    offerPrice: formData.get("offerPrice"),
+    message: formData.get("message") || "",
+  });
+  if (!parsed.success) {
+    return { fieldErrors: fieldErrorsFrom(parsed.error.issues), values: rawValues };
+  }
+
+  const listing = await prisma.marketListing.findUnique({
+    where: { id: parsed.data.listingId },
+    select: { id: true, status: true, sellerId: true },
+  });
+  if (!listing || listing.status !== "APPROVED") {
+    return { error: "এই লিস্টিংটি বর্তমানে অফারের জন্য উপলব্ধ নয়।", values: rawValues };
+  }
+  if (listing.sellerId === session.user.id) {
+    return { error: "নিজের লিস্টিংয়ে নিজে অফার করা যাবে না।", values: rawValues };
+  }
+
+  await prisma.marketOffer.create({
+    data: {
+      listingId: listing.id,
+      buyerId: session.user.id,
+      offerPrice: parsed.data.offerPrice,
+      message: parsed.data.message || null,
+    },
+  });
+
+  revalidatePath(`/market/${listing.id}`);
+  revalidatePath("/admin/market");
+  return { success: true };
+}
+
+export async function respondToMarketOfferAction(formData: FormData) {
+  const session = await requireAdmin();
+  const id = String(formData.get("id") || "");
+  const status = String(formData.get("status") || "");
+  if (!id || (status !== "ACCEPTED" && status !== "REJECTED")) return;
+
+  const offer = await prisma.marketOffer.update({
+    where: { id },
+    data: { status, respondedById: session.user.id, respondedAt: new Date() },
+    select: { listingId: true },
+  });
+
+  revalidatePath(`/market/${offer.listingId}`);
   revalidatePath("/admin/market");
 }
 

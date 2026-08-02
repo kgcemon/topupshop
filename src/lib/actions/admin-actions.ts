@@ -36,7 +36,8 @@ export async function updateOrderStatusAction(formData: FormData) {
     | "RUNNING"
     | "REJECTED"
     | "DELIVERED"
-    | "CANCELLED";
+    | "CANCELLED"
+    | "AUTO_FAILED";
   const adminNote = String(formData.get("adminNote") || "");
   const redirectStatus = String(formData.get("redirectStatus") || "ALL");
   const redirectQuery = String(formData.get("redirectQuery") || "");

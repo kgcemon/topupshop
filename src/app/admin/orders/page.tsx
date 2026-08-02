@@ -6,7 +6,16 @@ import { CopyButton } from "@/components/copy-button";
 import { updateOrderStatusAction } from "@/lib/actions/admin-actions";
 import type { Prisma } from "@/generated/prisma/client";
 
-const STATUS_FILTERS = ["ALL", "PENDING", "APPROVED", "RUNNING", "DELIVERED", "REJECTED", "CANCELLED"] as const;
+const STATUS_FILTERS = [
+  "AUTO_FAILED",
+  "ALL",
+  "PENDING",
+  "APPROVED",
+  "RUNNING",
+  "DELIVERED",
+  "REJECTED",
+  "CANCELLED",
+] as const;
 const PAGE_SIZE = 20;
 
 export default async function AdminOrdersPage({
@@ -76,27 +85,35 @@ export default async function AdminOrdersPage({
 
       <div className="-mx-3 mb-4 overflow-x-auto px-3 sm:mx-0 sm:px-0">
         <div className="flex w-max gap-2 sm:w-auto sm:flex-wrap">
-          {STATUS_FILTERS.map((s) => (
-            <Link
-              key={s}
-              href={`/admin/orders?status=${s}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
-              scroll={false}
-              className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${
-                filter === s
-                  ? "bg-secondary-900 text-white shadow-sm"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              {s}
-              <span
-                className={`rounded-full px-1.5 py-0.5 text-[10px] ${
-                  filter === s ? "bg-white/20" : "bg-white text-gray-500"
+          {STATUS_FILTERS.map((s) => {
+            const isAutoFailed = s === "AUTO_FAILED";
+            const hasAutoFailed = isAutoFailed && (countByStatus[s] ?? 0) > 0;
+            return (
+              <Link
+                key={s}
+                href={`/admin/orders?status=${s}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
+                scroll={false}
+                className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${
+                  filter === s
+                    ? hasAutoFailed
+                      ? "bg-red-600 text-white shadow-sm"
+                      : "bg-secondary-900 text-white shadow-sm"
+                    : hasAutoFailed
+                      ? "bg-red-100 text-red-700 hover:bg-red-200"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
-                {countByStatus[s] ?? 0}
-              </span>
-            </Link>
-          ))}
+                {s}
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+                    filter === s ? "bg-white/20" : hasAutoFailed ? "bg-white text-red-700" : "bg-white text-gray-500"
+                  }`}
+                >
+                  {countByStatus[s] ?? 0}
+                </span>
+              </Link>
+            );
+          })}
         </div>
       </div>
 
@@ -171,7 +188,7 @@ export default async function AdminOrdersPage({
             <div className="mb-2 grid grid-cols-1 gap-2 text-[11px] text-gray-600 sm:grid-cols-2">
               <p className="truncate">
                 {order.user ? (
-                  `${order.user.name} · ${order.user.email}`
+                  `${order.user.name} · ${order.user.email}${order.user.phone ? ` · ${order.user.phone}` : ""}`
                 ) : (
                   <>
                     <span className="mr-1.5 inline-flex items-center rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold text-orange-700">
@@ -359,6 +376,7 @@ export default async function AdminOrdersPage({
                 <option value="DELIVERED">DELIVERED</option>
                 <option value="REJECTED">REJECTED</option>
                 <option value="CANCELLED">CANCELLED</option>
+                <option value="AUTO_FAILED">AUTO_FAILED</option>
               </select>
               <input
                 name="adminNote"

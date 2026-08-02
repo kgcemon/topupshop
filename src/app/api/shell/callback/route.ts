@@ -86,9 +86,12 @@ export async function POST(request: Request) {
     const errorMessage = content ?? "Shell callback ব্যর্থতা রিপোর্ট করেছে";
     // Release the Shell claim too, so a resubmitted approval can call the
     // API again instead of being blocked by the earlier in-flight claim.
+    // Marking AUTO_FAILED (rather than leaving status untouched) surfaces the
+    // failure to admins immediately via the AUTO FAILED tab — still retryable,
+    // since resubmitting APPROVED only checks for RUNNING/DELIVERED.
     await prisma.order.update({
       where: { id: order.id },
-      data: { adminNote: errorMessage, shellClaimedAt: null },
+      data: { status: "AUTO_FAILED", adminNote: errorMessage, shellClaimedAt: null },
     });
     await notifyAdmins(prisma, {
       type: "ORDER_FULFILLMENT_ISSUE",

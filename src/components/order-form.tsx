@@ -8,6 +8,7 @@ import { placeOrderAction, type OrderActionState } from "@/lib/actions/order-act
 import { formatTaka, formatOrderNumber } from "@/lib/utils";
 import { OrderStatusBadge } from "@/components/status-badge";
 import { PaymentNumberCard } from "@/components/payment-number-card";
+import { WhatsappBargainLink, WhatsAppIcon } from "@/components/whatsapp-bargain-link";
 
 type RechargeOption = { id: number; label: string; price: number; stock: number | null };
 
@@ -31,6 +32,7 @@ export function OrderForm({
   paymentIcons,
   stockOut,
   allowGuestOrders,
+  whatsappNumber,
 }: {
   productId: number;
   options: RechargeOption[];
@@ -40,6 +42,7 @@ export function OrderForm({
   paymentIcons: PaymentIcons;
   stockOut: boolean;
   allowGuestOrders: boolean;
+  whatsappNumber: string;
 }) {
   const canOrderAsGuest = !isLoggedIn && allowGuestOrders;
   const [selectedOptionId, setSelectedOptionId] = useState<number | undefined>(undefined);
@@ -115,7 +118,15 @@ export function OrderForm({
           </div>
         </div>
 
-        <div className="border-t border-gray-100 p-5">
+        <div className="space-y-2 border-t border-gray-100 p-5">
+          <WhatsappBargainLink
+            whatsappNumber={whatsappNumber}
+            message={`আসসালামু আলাইকুম, আমি অর্ডার ${formatOrderNumber(o.orderSerial)} (${o.productName} — ${o.optionLabel}, মূল্য ${formatTaka(o.amount)} টাকা) নিয়ে বার্গেইন করতে চাই।`}
+            className="flex w-full items-center justify-center gap-2 rounded-md bg-green-600 py-2.5 text-center font-bold text-white hover:bg-green-700"
+          >
+            <WhatsAppIcon />
+            দাম নিয়ে বার্গেইন করতে WhatsApp করুন
+          </WhatsappBargainLink>
           {isLoggedIn ? (
             <Link
               href="/dashboard/orders"
@@ -449,3 +460,4 @@ function MobileBankingIcon() {
     </svg>
   );
 }
+

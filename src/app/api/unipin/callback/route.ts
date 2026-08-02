@@ -116,9 +116,14 @@ export async function POST(request: Request) {
       data: { status: "FAILED", lastError: errorMessage },
     });
     // Surfaces the failure reason (e.g. "Invalid Player ID") directly on the
-    // order for an admin to see — order status is left untouched so it stays
-    // retryable via a resubmitted approval.
-    await prisma.order.update({ where: { id: order.id }, data: { adminNote: errorMessage } });
+    // order for an admin to see. Marking AUTO_FAILED (rather than leaving
+    // status untouched) puts it front-and-center on the AUTO FAILED tab —
+    // still retryable, since resubmitting APPROVED only checks for
+    // RUNNING/DELIVERED.
+    await prisma.order.update({
+      where: { id: order.id },
+      data: { status: "AUTO_FAILED", adminNote: errorMessage },
+    });
     await notifyAdmins(prisma, {
       type: "ORDER_FULFILLMENT_ISSUE",
       message: `⚠️ অর্ডার ${formatOrderNumber(order.orderSerial)} (UNIPIN) fulfillment ব্যর্থ: ${errorMessage}`,

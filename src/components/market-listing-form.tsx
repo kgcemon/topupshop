@@ -2,23 +2,30 @@
 
 import { useActionState, useState } from "react";
 import Image from "next/image";
-import { createMarketListingAction } from "@/lib/actions/market-actions";
-import type { ActionState } from "@/lib/actions/auth-actions";
+import { createMarketListingAction, type MarketActionState } from "@/lib/actions/market-actions";
 
-const initialState: ActionState = {};
+const initialState: MarketActionState = {};
 const MAX_IMAGES = 5;
 
 export function MarketListingForm() {
   const [state, formAction, pending] = useActionState(createMarketListingAction, initialState);
   const [previews, setPreviews] = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  // React resets uncontrolled form fields after every action run (success or
+  // validation error). Remounting on state change + re-applying defaultValue
+  // is what makes entered values survive a failed submit — see RegisterForm
+  // for the same pattern. The file input additionally needs its FileList
+  // rebuilt by hand since a plain `defaultValue` can't restore file inputs.
+  const formKey = JSON.stringify(state);
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form key={formKey} action={formAction} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-sm font-semibold">গেম</label>
           <input
             name="game"
+            defaultValue={state.values?.game}
             placeholder="যেমনঃ Free Fire, PUBG Mobile"
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
@@ -30,6 +37,7 @@ export function MarketListingForm() {
             name="price"
             type="number"
             min={1}
+            defaultValue={state.values?.price}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
           {state.fieldErrors?.price && <p className="mt-1 text-sm text-red-600">{state.fieldErrors.price}</p>}
@@ -40,6 +48,7 @@ export function MarketListingForm() {
         <label className="mb-1 block text-sm font-semibold">টাইটেল</label>
         <input
           name="title"
+          defaultValue={state.values?.title}
           placeholder="যেমনঃ Free Fire ID with Full Rare Bundle"
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
         />
@@ -51,6 +60,7 @@ export function MarketListingForm() {
         <textarea
           name="description"
           rows={5}
+          defaultValue={state.values?.description}
           placeholder="আইডির লেভেল, স্কিন, র‍্যাঙ্ক, ইত্যাদি বিস্তারিত লিখুন"
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
         />
@@ -66,8 +76,19 @@ export function MarketListingForm() {
           name="imageFiles"
           accept="image/*"
           multiple
+          ref={(node) => {
+            // Runs on every mount of this input, including the remount that
+            // follows a failed submit — re-attach the files the user already
+            // picked so they aren't silently dropped from the next submit.
+            if (node && selectedFiles.length > 0) {
+              const dataTransfer = new DataTransfer();
+              for (const file of selectedFiles) dataTransfer.items.add(file);
+              node.files = dataTransfer.files;
+            }
+          }}
           onChange={(e) => {
             const files = Array.from(e.target.files ?? []).slice(0, MAX_IMAGES);
+            setSelectedFiles(files);
             setPreviews(files.map((file) => URL.createObjectURL(file)));
           }}
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary-500 file:px-3 file:py-1.5 file:text-white"
@@ -99,6 +120,7 @@ export function MarketListingForm() {
             <label className="mb-1 block text-sm font-semibold">কন্টাক্ট নাম্বার</label>
             <input
               name="contactNumber"
+              defaultValue={state.values?.contactNumber}
               placeholder="01xxxxxxxxx"
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
@@ -110,6 +132,7 @@ export function MarketListingForm() {
             <label className="mb-1 block text-sm font-semibold">WhatsApp নাম্বার</label>
             <input
               name="whatsappNumber"
+              defaultValue={state.values?.whatsappNumber}
               placeholder="+8801xxxxxxxxx"
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />

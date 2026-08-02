@@ -6,7 +6,23 @@ import {
   rejectMarketListingAction,
   deleteMarketListingAction,
   toggleMarketEnabledAction,
+  respondToMarketOfferAction,
 } from "@/lib/actions/market-actions";
+
+const OFFER_STATUS_LABELS: Record<string, { label: string; className: string }> = {
+  PENDING: { label: "Pending", className: "bg-yellow-100 text-yellow-700" },
+  ACCEPTED: { label: "Accepted", className: "bg-green-100 text-green-700" },
+  REJECTED: { label: "Rejected", className: "bg-red-100 text-red-700" },
+};
+
+type OfferRow = {
+  id: string;
+  offerPrice: number;
+  message: string | null;
+  status: string;
+  createdAt: Date;
+  buyer: { name: string | null; email: string; phone: string | null };
+};
 
 type ListingRow = {
   id: string;
@@ -20,6 +36,7 @@ type ListingRow = {
   whatsappNumber: string | null;
   createdAt: Date;
   seller: { name: string | null; email: string };
+  offers: OfferRow[];
 };
 
 function ListingRow({ listing }: { listing: ListingRow }) {
@@ -64,6 +81,51 @@ function ListingRow({ listing }: { listing: ListingRow }) {
         {listing.whatsappNumber && <>WhatsApp: {listing.whatsappNumber}</>}
       </p>
 
+      {listing.offers.length > 0 && (
+        <div className="mb-3 space-y-1.5 rounded-md border border-gray-200 bg-gray-50 p-2.5">
+          <p className="text-xs font-bold text-gray-500">Offers ({listing.offers.length})</p>
+          {listing.offers.map((offer) => {
+            const s = OFFER_STATUS_LABELS[offer.status];
+            return (
+              <div key={offer.id} className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="min-w-0">
+                  <p className="font-bold text-gray-900">
+                    ৳ {formatTaka(offer.offerPrice)}{" "}
+                    <span className="font-normal text-gray-500">
+                      — {offer.buyer.name || "User"} ({offer.buyer.email}
+                      {offer.buyer.phone ? `, ${offer.buyer.phone}` : ""})
+                    </span>
+                  </p>
+                  {offer.message && <p className="text-gray-500">&ldquo;{offer.message}&rdquo;</p>}
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {offer.status === "PENDING" ? (
+                    <>
+                      <form action={respondToMarketOfferAction}>
+                        <input type="hidden" name="id" value={offer.id} />
+                        <input type="hidden" name="status" value="ACCEPTED" />
+                        <button className="rounded-md bg-primary-500 px-2 py-1 font-bold text-white hover:bg-primary-600">
+                          Accept
+                        </button>
+                      </form>
+                      <form action={respondToMarketOfferAction}>
+                        <input type="hidden" name="id" value={offer.id} />
+                        <input type="hidden" name="status" value="REJECTED" />
+                        <button className="rounded-md border border-red-300 px-2 py-1 font-bold text-red-600 hover:bg-red-50">
+                          Reject
+                        </button>
+                      </form>
+                    </>
+                  ) : (
+                    <span className={`rounded-full px-2 py-0.5 font-bold ${s.className}`}>{s.label}</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         {listing.status === "PENDING" && (
           <>
@@ -97,7 +159,13 @@ export default async function AdminMarketPage() {
     prisma.siteSetting.findUnique({ where: { id: 1 }, select: { marketEnabled: true } }),
     prisma.marketListing.findMany({
       orderBy: { createdAt: "desc" },
-      include: { seller: { select: { name: true, email: true } } },
+      include: {
+        seller: { select: { name: true, email: true } },
+        offers: {
+          orderBy: { createdAt: "desc" },
+          include: { buyer: { select: { name: true, email: true, phone: true } } },
+        },
+      },
     }),
   ]);
 

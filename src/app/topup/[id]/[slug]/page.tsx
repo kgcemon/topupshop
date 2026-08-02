@@ -172,6 +172,7 @@ export default async function TopupProductPage({
         walletBalance={walletBalance}
         stockOut={product.stockOut}
         allowGuestOrders={settings.allowGuestOrders}
+        whatsappNumber={settings.whatsappNumber}
         paymentNumbers={{
           bkashNumber: settings.bkashNumber,
           nagadNumber: settings.nagadNumber,

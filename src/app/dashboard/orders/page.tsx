@@ -1,10 +1,21 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getSiteSettings } from "@/lib/data";
 import { formatTaka, formatOrderNumber } from "@/lib/utils";
 import { OrderStatusBadge } from "@/components/status-badge";
+import { WhatsappBargainLink } from "@/components/whatsapp-bargain-link";
 
 const PAGE_SIZE = 20;
+
+function bargainMessage(order: {
+  orderSerial: number;
+  amount: number;
+  product: { name: string };
+  rechargeOption: { label: string };
+}) {
+  return `আসসালামু আলাইকুম, আমি অর্ডার ${formatOrderNumber(order.orderSerial)} (${order.product.name} — ${order.rechargeOption.label}, মূল্য ${formatTaka(order.amount)} টাকা) নিয়ে বার্গেইন করতে চাই।`;
+}
 
 export default async function OrderHistoryPage({
   searchParams,
@@ -16,7 +27,7 @@ export default async function OrderHistoryPage({
   const { page } = await searchParams;
   const currentPage = Math.max(1, Number(page) || 1);
 
-  const [orders, totalCount] = await Promise.all([
+  const [orders, totalCount, settings] = await Promise.all([
     prisma.order.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
@@ -25,6 +36,7 @@ export default async function OrderHistoryPage({
       include: { product: true, rechargeOption: true },
     }),
     prisma.order.count({ where: { userId } }),
+    getSiteSettings(),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -58,6 +70,13 @@ export default async function OrderHistoryPage({
                   <dt>Date</dt>
                   <dd className="text-right">{new Date(order.createdAt).toLocaleString("bn-BD")}</dd>
                 </dl>
+                <WhatsappBargainLink
+                  whatsappNumber={settings.whatsappNumber}
+                  message={bargainMessage(order)}
+                  className="mt-2 flex items-center justify-center gap-1.5 rounded-md bg-green-600 py-1.5 text-xs font-bold text-white hover:bg-green-700"
+                >
+                  বার্গেইন করুন
+                </WhatsappBargainLink>
               </div>
             ))}
           </div>
@@ -72,7 +91,8 @@ export default async function OrderHistoryPage({
                   <th className="py-2 pr-3">Amount</th>
                   <th className="py-2 pr-3">Method</th>
                   <th className="py-2 pr-3">Status</th>
-                  <th className="py-2">Date</th>
+                  <th className="py-2 pr-3">Date</th>
+                  <th className="py-2"></th>
                 </tr>
               </thead>
               <tbody>
@@ -89,8 +109,17 @@ export default async function OrderHistoryPage({
                     <td className="py-3 pr-3">
                       <OrderStatusBadge status={order.status} />
                     </td>
-                    <td className="py-3 text-xs text-gray-500">
+                    <td className="py-3 pr-3 text-xs text-gray-500">
                       {new Date(order.createdAt).toLocaleString("bn-BD")}
+                    </td>
+                    <td className="py-3">
+                      <WhatsappBargainLink
+                        whatsappNumber={settings.whatsappNumber}
+                        message={bargainMessage(order)}
+                        className="inline-flex items-center gap-1 rounded-md bg-green-600 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-green-700"
+                      >
+                        বার্গেইন
+                      </WhatsappBargainLink>
                     </td>
                   </tr>
                 ))}

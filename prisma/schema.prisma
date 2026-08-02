@@ -78,23 +78,25 @@ model User {
   lastLoginLocation String? // best-effort IP geolocation, e.g. "Dhaka, Bangladesh"
   loginCount        Int       @default(0) // all-time login count — never pruned, unlike loginLogs
 
-  accounts             Account[]
-  sessions             Session[]
-  orders               Order[]
-  walletTransactions   WalletTransaction[]
-  reviewedTransactions WalletTransaction[] @relation("ReviewedBy")
-  reviewedOrders       Order[]             @relation("OrderReviewedBy")
-  referredBy           User?               @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
-  referrals            User[]              @relation("Referrals")
-  blogComments         BlogComment[]
-  blogLikes            BlogLike[]
-  blogCommentLikes     BlogCommentLike[]
-  notifications        Notification[]      @relation("UserNotifications")
-  sentNotifications    Notification[]      @relation("ActorNotifications")
-  loginLogs            LoginLog[]
-  reviews              Review[]
-  marketListings         MarketListing[]  @relation("MarketListingSeller")
-  reviewedMarketListings MarketListing[]  @relation("MarketListingReviewedBy")
+  accounts               Account[]
+  sessions               Session[]
+  orders                 Order[]
+  walletTransactions     WalletTransaction[]
+  reviewedTransactions   WalletTransaction[] @relation("ReviewedBy")
+  reviewedOrders         Order[]             @relation("OrderReviewedBy")
+  referredBy             User?               @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals              User[]              @relation("Referrals")
+  blogComments           BlogComment[]
+  blogLikes              BlogLike[]
+  blogCommentLikes       BlogCommentLike[]
+  notifications          Notification[]      @relation("UserNotifications")
+  sentNotifications      Notification[]      @relation("ActorNotifications")
+  loginLogs              LoginLog[]
+  reviews                Review[]
+  marketListings         MarketListing[]     @relation("MarketListingSeller")
+  reviewedMarketListings MarketListing[]     @relation("MarketListingReviewedBy")
+  marketOffers           MarketOffer[]       @relation("MarketOfferBuyer")
+  respondedMarketOffers  MarketOffer[]       @relation("MarketOfferRespondedBy")
 }
 
 // Per-login activity trail — pruned in application code (see recordLoginActivity)
@@ -202,6 +204,7 @@ enum OrderStatus {
   REJECTED
   DELIVERED
   CANCELLED
+  AUTO_FAILED // vendor callback (Shell/UniPin) reported status "failed" — set automatically, never by an admin; still retryable by resubmitting APPROVED
 }
 
 model Order {
@@ -227,8 +230,8 @@ model Order {
 
   shellClaimedAt DateTime? // set atomically right before calling the Shell API for this order; guards against a second concurrent/retried call. Reset to null on failure so a legitimate retry can re-claim.
 
-  user                User?          @relation(fields: [userId], references: [id])
-  product             Product        @relation(fields: [productId], references: [id])
+  user                User?           @relation(fields: [userId], references: [id])
+  product             Product         @relation(fields: [productId], references: [id])
   rechargeOption      RechargeOption  @relation(fields: [rechargeOptionId], references: [id])
   reviewedBy          User?           @relation("OrderReviewedBy", fields: [reviewedById], references: [id])
   redeemedUnipinCodes UnipinCode[]
@@ -534,27 +537,58 @@ enum MarketListingStatus {
 // for the whole feature. No in-app payment/escrow: buyer and seller connect
 // directly via the required contactNumber/whatsappNumber (see marketListingFormSchema).
 model MarketListing {
-  id              String              @id @default(cuid())
-  sellerId        String
-  game            String
-  title           String
-  description     String              @db.Text
-  price           Int // in BDT
-  images          Json // string[] of /uploads paths
-  contactNumber   String?
-  whatsappNumber  String?
-  status          MarketListingStatus @default(PENDING)
-  adminNote       String?             @db.Text
-  reviewedById    String?
-  reviewedAt      DateTime?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  id             String              @id @default(cuid())
+  sellerId       String
+  game           String
+  title          String
+  description    String              @db.Text
+  price          Int // in BDT
+  images         Json // string[] of /uploads paths
+  contactNumber  String?
+  whatsappNumber String?
+  status         MarketListingStatus @default(PENDING)
+  adminNote      String?             @db.Text
+  reviewedById   String?
+  reviewedAt     DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
 
-  seller     User  @relation("MarketListingSeller", fields: [sellerId], references: [id], onDelete: Cascade)
-  reviewedBy User? @relation("MarketListingReviewedBy", fields: [reviewedById], references: [id])
+  seller     User          @relation("MarketListingSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  reviewedBy User?         @relation("MarketListingReviewedBy", fields: [reviewedById], references: [id])
+  offers     MarketOffer[]
 
   @@index([status, createdAt])
   @@index([sellerId])
+}
+
+enum MarketOfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+// A buyer's price offer on a MarketListing — the in-site "bargain" flow.
+// Admin reviews offers (not the seller directly, matching the rest of the
+// marketplace's admin-brokered model) and accepts/rejects from /admin/market.
+model MarketOffer {
+  id            String            @id @default(cuid())
+  listingId     String
+  buyerId       String
+  offerPrice    Int // in BDT
+  message       String?           @db.Text
+  status        MarketOfferStatus @default(PENDING)
+  respondedById String?
+  respondedAt   DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  listing     MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyer       User          @relation("MarketOfferBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  respondedBy User?         @relation("MarketOfferRespondedBy", fields: [respondedById], references: [id])
+
+  @@index([listingId, createdAt])
+  @@index([buyerId])
+  @@index([status])
 }
 
 model SiteSetting {
