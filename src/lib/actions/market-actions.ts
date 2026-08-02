@@ -6,7 +6,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { marketListingFormSchema, marketOfferFormSchema } from "@/lib/validation";
 import type { ActionState } from "@/lib/actions/auth-actions";
-import { saveUploadedImage } from "@/lib/upload";
+import { saveUploadedListingPhoto } from "@/lib/upload";
 
 const MAX_IMAGES = 5;
 
@@ -43,7 +43,7 @@ async function uploadListingImages(formData: FormData): Promise<string[] | { err
   const uploaded: string[] = [];
   for (const file of files.slice(0, MAX_IMAGES)) {
     try {
-      const path = await saveUploadedImage(file, "market");
+      const path = await saveUploadedListingPhoto(file, "market");
       if (path) uploaded.push(path);
     } catch (error) {
       return { error: error instanceof Error ? error.message : "ইমেজ আপলোড ব্যর্থ হয়েছে" };

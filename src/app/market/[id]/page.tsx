@@ -51,7 +51,13 @@ export default async function MarketListingPage({ params }: { params: Promise<{ 
           <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
             {images.map((src, i) => (
               <div key={i} className="relative aspect-square overflow-hidden rounded-md bg-gray-100">
-                <Image src={src} alt={`${listing.title} ${i + 1}`} fill className="object-cover" unoptimized />
+                <Image
+                  src={src}
+                  alt={`${listing.title} ${i + 1}`}
+                  fill
+                  sizes="(min-width: 640px) 220px, 50vw"
+                  className="object-cover"
+                />
               </div>
             ))}
           </div>

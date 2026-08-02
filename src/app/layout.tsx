@@ -1,10 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Hind_Siliguri, Bree_Serif } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { HelpBubble } from "@/components/help-bubble";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { PwaRegister } from "@/components/pwa-register";
 import { getSiteSettings } from "@/lib/data";
 
 const bodyFont = Hind_Siliguri({
@@ -20,6 +21,10 @@ const headingFont = Bree_Serif({
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+export const viewport: Viewport = {
+  themeColor: "#14d72b",
+};
 
 const DEFAULT_DESCRIPTION =
   "TopUpsBD থেকে সবচেয়ে দ্রুত ও নিরাপদভাবে Free Fire Diamond TopUp করুন। UID Topup, Weekly/Monthly Membership, Level Up Pass — ২৪ ঘন্টা সার্ভিস।";
@@ -50,7 +55,15 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description,
     keywords,
-    icons: { icon: settings.favicon || "/favicon.ico" },
+    icons: {
+      icon: settings.favicon || "/favicon.ico",
+      apple: "/icons/apple-touch-icon.png",
+    },
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "default",
+      title: settings.siteName,
+    },
     openGraph: {
       type: "website",
       locale: "bn_BD",
@@ -109,6 +122,7 @@ export default async function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
+        <PwaRegister />
         <SiteHeader />
         <main className="flex-1">{children}</main>
         <SiteFooter settings={settings} />

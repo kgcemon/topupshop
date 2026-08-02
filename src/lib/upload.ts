@@ -59,7 +59,7 @@ export async function saveUploadedIcon(file: File | null, prefix: string): Promi
   if (!file || file.size === 0) return null;
 
   if (!ALLOWED_TYPES.has(file.type)) {
-    throw new Error("শুধুমাত্র JPG, PNG, WEBP, GIF বা AVIF ইমেজ আপলোড করা যাবে");
+    throw new Error("শুধুমাত্র JPG, PNG, WEBP, GIF, AVIF, SVG বা ICO ইমেজ আপলোড করা যাবে");
   }
   if (file.size > MAX_SIZE_BYTES) {
     throw new Error("ইমেজের সাইজ সর্বোচ্চ ৮MB হতে পারবে");
@@ -70,8 +70,10 @@ export async function saveUploadedIcon(file: File | null, prefix: string): Promi
   const safePrefix = prefix.replace(/[^a-z0-9-]/gi, "").slice(0, 40) || "upload";
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  if (file.type === "image/svg+xml") {
-    const filename = `${safePrefix}-${Date.now()}-${Math.round(Math.random() * 1e9)}.svg`;
+  // sharp can't decode ICO, and SVG is already tiny/vector — pass both through unchanged.
+  if (file.type === "image/svg+xml" || file.type === "image/x-icon" || file.type === "image/vnd.microsoft.icon") {
+    const ext = file.type === "image/svg+xml" ? "svg" : "ico";
+    const filename = `${safePrefix}-${Date.now()}-${Math.round(Math.random() * 1e9)}.${ext}`;
     await writeFile(path.join(UPLOAD_DIR, filename), buffer);
     return `/uploads/${filename}`;
   }
@@ -82,6 +84,45 @@ export async function saveUploadedIcon(file: File | null, prefix: string): Promi
     .toBuffer();
 
   const filename = `${safePrefix}-${Date.now()}-${Math.round(Math.random() * 1e9)}.png`;
+  await writeFile(path.join(UPLOAD_DIR, filename), resized);
+
+  return `/uploads/${filename}`;
+}
+
+const LISTING_PHOTO_MAX_DIMENSION = 1280;
+const PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
+/**
+ * Saves a market-listing photo, downscaling it so raw phone-camera uploads
+ * (which can be several MB) don't get served unoptimized to every visitor of
+ * the public market grid. SVG/ICO aren't accepted here — those make no sense
+ * for a listing photo and would otherwise skip next/image's optimizer.
+ */
+export async function saveUploadedListingPhoto(file: File | null, prefix: string): Promise<string | null> {
+  if (!file || file.size === 0) return null;
+
+  if (!PHOTO_TYPES.has(file.type)) {
+    throw new Error("শুধুমাত্র JPG, PNG, WEBP বা GIF ইমেজ আপলোড করা যাবে");
+  }
+  if (file.size > MAX_SIZE_BYTES) {
+    throw new Error("ইমেজের সাইজ সর্বোচ্চ ৮MB হতে পারবে");
+  }
+
+  await mkdir(UPLOAD_DIR, { recursive: true });
+
+  const safePrefix = prefix.replace(/[^a-z0-9-]/gi, "").slice(0, 40) || "upload";
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const resized = await sharp(buffer)
+    .rotate()
+    .resize(LISTING_PHOTO_MAX_DIMENSION, LISTING_PHOTO_MAX_DIMENSION, {
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .jpeg({ quality: 82 })
+    .toBuffer();
+
+  const filename = `${safePrefix}-${Date.now()}-${Math.round(Math.random() * 1e9)}.jpg`;
   await writeFile(path.join(UPLOAD_DIR, filename), resized);
 
   return `/uploads/${filename}`;

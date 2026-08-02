@@ -872,7 +872,7 @@ export async function updateSiteSettingsAction(
   const faviconFile = formData.get("faviconFile");
   if (faviconFile instanceof File && faviconFile.size > 0) {
     try {
-      const uploaded = await saveUploadedImage(faviconFile, "favicon");
+      const uploaded = await saveUploadedIcon(faviconFile, "favicon");
       if (uploaded) favicon = uploaded;
     } catch (error) {
       return { error: error instanceof Error ? error.message : "Favicon আপলোড ব্যর্থ হয়েছে" };

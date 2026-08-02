@@ -18,7 +18,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/login",
   },
   providers: [
-    Google,
+    Google({
+      // An email/password account has no linked Google Account row yet, so
+      // without this Auth.js refuses Google sign-in with the same email
+      // ("OAuthAccountNotLinked") instead of attaching Google to it.
+      allowDangerousEmailAccountLinking: true,
+    }),
     Credentials({
       name: "credentials",
       credentials: {
@@ -47,12 +52,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ user }) {
+    async signIn({ user, account, profile }) {
       if (!user?.id) return true;
+
       const dbUser = await prisma.user.findUnique({
         where: { id: user.id },
-        select: { isBlocked: true, blockedUntil: true },
+        select: { isBlocked: true, blockedUntil: true, image: true },
       });
+
+      // Existing (e.g. credentials-registered) account had no avatar —
+      // now that it's linked to Google, adopt the Google profile photo.
+      if (account?.provider === "google" && !dbUser?.image && typeof profile?.picture === "string") {
+        await prisma.user.update({ where: { id: user.id }, data: { image: profile.picture } });
+      }
+
       const stillBlocked =
         dbUser?.isBlocked && (!dbUser.blockedUntil || dbUser.blockedUntil > new Date());
       return !stillBlocked;

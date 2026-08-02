@@ -1,19 +1,9 @@
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getSessionWithWallet } from "@/lib/session";
 import { formatTaka } from "@/lib/utils";
 import { MobileNavLink as NavLink } from "@/components/mobile-nav-link";
 
 export async function MobileBottomNav() {
-  const session = await auth();
-
-  let walletBalance: number | null = null;
-  if (session?.user) {
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { walletBalance: true },
-    });
-    walletBalance = user?.walletBalance ?? 0;
-  }
+  const { session, walletBalance } = await getSessionWithWallet();
 
   return (
     <nav

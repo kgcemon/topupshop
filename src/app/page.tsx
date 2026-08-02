@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { getActiveBanners, getActiveNotice, getHomeProducts, getPublishedBlogPosts } from "@/lib/data";
 import { NoticeBar } from "@/components/notice-bar";
 import { Carousel } from "@/components/carousel";
 import { ProductGrid } from "@/components/product-grid";
 import { InstallAppPopup } from "@/components/install-app-popup";
+import { DownloadAppButton } from "@/components/download-app-button";
 import { BlogPostCard } from "@/components/blog-post-card";
 
 export const metadata: Metadata = {
@@ -53,23 +53,7 @@ export default async function HomePage() {
       </div>
 
       <div className="container mx-auto mb-8 flex flex-nowrap items-center justify-center gap-2 px-3 sm:gap-4 md:px-4">
-        <a
-          href="#"
-          className="flex flex-1 items-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-2.5 py-1.5 transition-shadow hover:shadow-md sm:flex-none sm:gap-3 sm:px-4 sm:py-2"
-        >
-          <Image
-            src="/images/app_link.png"
-            alt="Google Play"
-            width={32}
-            height={32}
-            className="h-6 w-6 shrink-0 object-contain sm:h-8 sm:w-8"
-          />
-          <span className="text-[11px] font-bold leading-tight sm:text-sm">
-            Download Our Mobile App
-            <br />
-            <span className="text-primary-600">Click Here &rarr;</span>
-          </span>
-        </a>
+        <DownloadAppButton />
         <a
           href="https://t.me/+K3PmqW02YCI2OGRl"
           target="_blank"

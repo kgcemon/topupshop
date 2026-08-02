@@ -1,7 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getSessionWithWallet } from "@/lib/session";
 import { getUserNotifications, getUnreadNotificationCount } from "@/lib/data";
 import { LogoutButton } from "@/components/logout-button";
 import { UserMenu } from "@/components/user-menu";
@@ -9,18 +8,15 @@ import { NotificationBell } from "@/components/notification-bell";
 import { SiteHeaderNav } from "@/components/site-header-nav";
 
 export async function SiteHeader() {
-  const session = await auth();
+  const { session, walletBalance } = await getSessionWithWallet();
 
-  let walletBalance = 0;
   let notifications: Awaited<ReturnType<typeof getUserNotifications>> = [];
   let unreadCount = 0;
   if (session?.user) {
-    const [user, notificationList, unread] = await Promise.all([
-      prisma.user.findUnique({ where: { id: session.user.id }, select: { walletBalance: true } }),
+    const [notificationList, unread] = await Promise.all([
       getUserNotifications(session.user.id),
       getUnreadNotificationCount(session.user.id),
     ]);
-    walletBalance = user?.walletBalance ?? 0;
     notifications = notificationList;
     unreadCount = unread;
   }

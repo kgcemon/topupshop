@@ -1,6 +1,12 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import {
+  getInstallAvailabilitySnapshot,
+  getInstallAvailabilityServerSnapshot,
+  subscribeInstallAvailability,
+  promptInstall,
+} from "@/lib/pwa-install";
 
 const STORAGE_KEY = "installAppDismissed";
 
@@ -23,9 +29,19 @@ function dismiss() {
 }
 
 export function InstallAppPopup() {
-  const visible = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const notDismissed = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const canInstall = useSyncExternalStore(
+    subscribeInstallAvailability,
+    getInstallAvailabilitySnapshot,
+    getInstallAvailabilityServerSnapshot
+  );
 
-  if (!visible) return null;
+  if (!notDismissed || !canInstall) return null;
+
+  async function handleInstall() {
+    await promptInstall();
+    dismiss();
+  }
 
   return (
     <div className="fixed inset-x-3 bottom-36 z-40 flex items-center gap-3 rounded-xl bg-primary-500 p-3 text-white shadow-lg md:inset-x-auto md:right-5 md:bottom-24 md:w-80">
@@ -41,7 +57,7 @@ export function InstallAppPopup() {
       </div>
 
       <button
-        onClick={dismiss}
+        onClick={handleInstall}
         className="shrink-0 rounded-md bg-white px-3 py-1.5 text-xs font-bold text-primary-600"
       >
         Install

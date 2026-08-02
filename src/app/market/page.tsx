@@ -96,7 +96,13 @@ export default async function MarketPage({
               >
                 <div className="relative aspect-square w-full bg-gray-100">
                   {images[0] ? (
-                    <Image src={images[0]} alt={listing.title} fill className="object-cover" unoptimized />
+                    <Image
+                      src={images[0]}
+                      alt={listing.title}
+                      fill
+                      sizes="(min-width: 768px) 25vw, 50vw"
+                      className="object-cover"
+                    />
                   ) : (
                     <div className="flex h-full items-center justify-center text-xs text-gray-400">No Image</div>
                   )}
