@@ -24,6 +24,8 @@ function buildNav(
     { href: "/admin/unipin", label: "Unipin", badge: 0 },
     { href: "/admin/shell", label: "Garena Shell", badge: 0 },
     { href: "/admin/api-settings", label: "API Settings", badge: 0 },
+    { href: "/admin/sms-settings", label: "SMS Settings", badge: 0 },
+    { href: "/admin/store-sms", label: "Store SMS", badge: 0 },
     { href: "/admin/sections", label: "Sections", badge: 0 },
     { href: "/admin/blog", label: "Blog", badge: 0 },
     { href: "/admin/banners", label: "Banners", badge: 0 },

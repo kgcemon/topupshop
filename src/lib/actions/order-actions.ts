@@ -5,11 +5,13 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { orderSchema, guestContactSchema } from "@/lib/validation";
-import { generateOrderNumber } from "@/lib/utils";
+import { generateOrderNumber, formatOrderNumber } from "@/lib/utils";
 import { getClientIp } from "@/lib/rate-limit";
 import { isIpBlocked, applyAbuseBlock, detectMaliciousInput } from "@/lib/security";
 import type { ActionState } from "@/lib/actions/auth-actions";
 import { processOrderFulfillment } from "@/lib/order-fulfillment";
+import { findUnusedPaymentSms, claimPaymentSmsById } from "@/lib/payment-sms-match";
+import { notifyAdmins, createNotification } from "@/lib/notifications";
 
 export type OrderActionState = ActionState & {
   order?: {
@@ -174,7 +176,66 @@ export async function placeOrderAction(
         });
       }
 
-      return tx.order.create({
+      // For manual bKash/Nagad/Rocket payments, check whether the trx id the
+      // customer typed matches an unused SMS the payment gateway already
+      // forwarded us. Three cases, keyed off the SMS's real amount (never the
+      // customer's typed amount, which isn't collected/trusted here anyway):
+      //   - equals the order price: auto-approve as before.
+      //   - more than the order price: auto-approve and credit the excess to
+      //     the buyer's wallet (registered users only — a guest has no wallet
+      //     to credit, so that case falls through to manual review below).
+      //   - less than the order price: leave the SMS UNUSED (it hasn't fully
+      //     paid for anything yet) and leave the order PENDING for manual
+      //     admin review, with a note explaining the shortfall so the admin
+      //     isn't left guessing why it didn't auto-approve.
+      let matchedSmsId: number | null = null;
+      let autoApproved = false;
+      let mismatchNote: string | null = null;
+      let overpayExcess: number | null = null;
+
+      if (paymentMethod !== "WALLET" && transactionId) {
+        const smsRow = await findUnusedPaymentSms(tx, { method: paymentMethod, trxId: transactionId });
+        if (smsRow) {
+          const smsAmount = Number(smsRow.amount);
+
+          if (smsAmount === option.price) {
+            if (await claimPaymentSmsById(tx, smsRow.id)) {
+              matchedSmsId = smsRow.id;
+              autoApproved = true;
+            }
+          } else if (smsAmount > option.price && userId) {
+            if (await claimPaymentSmsById(tx, smsRow.id)) {
+              matchedSmsId = smsRow.id;
+              autoApproved = true;
+              overpayExcess = smsAmount - option.price;
+              mismatchNote = `গ্রাহক SMS অনুযায়ী ৳${smsAmount} পাঠিয়েছেন, অর্ডারের মূল্য ৳${option.price}। বাড়তি ৳${overpayExcess} তার ওয়ালেটে যোগ করা হয়েছে। (TrxID: ${transactionId})`;
+
+              await tx.user.update({
+                where: { id: userId },
+                data: { walletBalance: { increment: overpayExcess } },
+              });
+              await tx.walletTransaction.create({
+                data: {
+                  userId,
+                  type: "REFUND",
+                  method: paymentMethod,
+                  amount: overpayExcess,
+                  status: "APPROVED",
+                  reviewedAt: new Date(),
+                  note: `TrxID ${transactionId}: পাঠানো ৳${smsAmount} - অর্ডারের মূল্য ৳${option.price} = বাড়তি ৳${overpayExcess} ওয়ালেটে যোগ করা হলো।`,
+                },
+              });
+            }
+          } else if (smsAmount > option.price) {
+            // Overpaid guest order — no wallet to credit into, so leave it for manual handling.
+            mismatchNote = `⚠️ গেস্ট অর্ডারে বাড়তি টাকা পাঠানো হয়েছে (SMS: ৳${smsAmount}, অর্ডার: ৳${option.price})। গেস্ট একাউন্টে ওয়ালেট নেই বলে যোগ করা যায়নি, ম্যানুয়ালি সমাধান করুন। SMS ব্যবহার করা হয়নি।`;
+          } else {
+            mismatchNote = `⚠️ পেমেন্ট কম হয়েছে: গ্রাহক TrxID ${transactionId} দিয়ে মাত্র ৳${smsAmount} পাঠিয়েছেন, কিন্তু অর্ডারের মূল্য ৳${option.price}। SMS ব্যবহার করা হয়নি, ম্যানুয়ালি পর্যালোচনা করুন।`;
+          }
+        }
+      }
+
+      const order = await tx.order.create({
         data: {
           orderNumber: generateOrderNumber(),
           userId,
@@ -187,10 +248,32 @@ export async function placeOrderAction(
           amount: option.price,
           paymentMethod,
           transactionId: paymentMethod === "WALLET" ? null : transactionId,
-          status: paymentMethod === "WALLET" ? "APPROVED" : "PENDING",
-          reviewedAt: paymentMethod === "WALLET" ? new Date() : null,
+          status: paymentMethod === "WALLET" || autoApproved ? "APPROVED" : "PENDING",
+          reviewedAt: paymentMethod === "WALLET" || autoApproved ? new Date() : null,
+          adminNote: mismatchNote,
         },
       });
+
+      if (matchedSmsId !== null) {
+        await tx.paymentSms.update({ where: { id: matchedSmsId }, data: { usedForOrderId: order.id } });
+      }
+
+      if (overpayExcess !== null) {
+        await notifyAdmins(tx, {
+          type: "ORDER_PAYMENT_MISMATCH",
+          message: `💰 অর্ডার ${formatOrderNumber(order.orderSerial)}: গ্রাহক ৳${overpayExcess} বেশি পাঠিয়েছিলেন, বাড়তি টাকা তার ওয়ালেটে যোগ করা হয়েছে।`,
+          link: `/admin/orders?status=ALL&q=${order.orderSerial}`,
+        });
+        // userId is guaranteed set here — this branch only runs for registered buyers (see condition above).
+        await createNotification(tx, {
+          userId: userId!,
+          type: "ORDER_NOTE",
+          message: `আপনার অর্ডার ${formatOrderNumber(order.orderSerial)} এর জন্য আপনি ৳${overpayExcess} বেশি পাঠিয়েছিলেন। বাড়তি টাকা আপনার ওয়ালেটে যোগ করা হয়েছে।`,
+          link: "/dashboard",
+        });
+      }
+
+      return order;
     });
   } catch (error) {
     if (error instanceof OrderError) {

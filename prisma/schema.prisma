@@ -238,6 +238,7 @@ model Order {
   redeemedUnipinCodes UnipinCode[]
   apiCallLogs         ApiCallLog[]
   fulfillmentJob      FulfillmentJob?
+  usedPaymentSms      PaymentSms?
 
   @@index([userId])
   @@index([status])
@@ -296,6 +297,51 @@ model ApiSetting {
   createdAt DateTime       @default(now())
 
   apiCallLogs ApiCallLog[]
+}
+
+// Allow-list of SMS sender IDs the mobile forwarder app is permitted to
+// report (e.g. "bKash", "NAGAD" — carriers/apps vary in casing, so admins
+// add each variant they see rather than relying on case-insensitive match).
+model SmsSender {
+  id        Int           @id @default(autoincrement())
+  name      String        @unique
+  method    PaymentMethod @default(BKASH)
+  isActive  Boolean       @default(true)
+  createdAt DateTime      @default(now())
+}
+
+enum PaymentSmsStatus {
+  UNUSED
+  USED
+}
+
+// A payment transaction extracted from an SMS forwarded by the mobile app.
+// Only SMS that (a) come from an allowed SmsSender and (b) match that
+// method's payment-notification format get a row here — everything else is
+// acknowledged but not stored. `trxId` is unique so re-delivered/duplicate
+// SMS from the forwarder app never create a second row.
+model PaymentSms {
+  id                         Int              @id @default(autoincrement())
+  method                     PaymentMethod
+  paymentNumber              String
+  trxId                      String           @unique
+  amount                     Decimal          @db.Decimal(12, 2)
+  balance                    Decimal?         @db.Decimal(12, 2)
+  status                     PaymentSmsStatus @default(UNUSED)
+  // False when SiteSetting.paymentSmsBalanceVerifyEnabled is on and this SMS's
+  // reported balance didn't equal checkpoint + amount — still stored/visible
+  // in the Store SMS list for admin review, but excluded from auto-matching
+  // (claimMatchingPaymentSms/findUnusedPaymentSms) until an admin re-enables it.
+  isActive                   Boolean          @default(true)
+  usedForOrderId             String?          @unique
+  usedForWalletTransactionId String?          @unique
+  createdAt                  DateTime         @default(now())
+
+  usedForOrder             Order?             @relation(fields: [usedForOrderId], references: [id], onDelete: SetNull)
+  usedForWalletTransaction WalletTransaction? @relation(fields: [usedForWalletTransactionId], references: [id], onDelete: SetNull)
+
+  @@index([method])
+  @@index([status])
 }
 
 // Raw request/response trail for every external API call made while fulfilling
@@ -381,7 +427,7 @@ model WalletTransaction {
   type          WalletTransactionType
   method        PaymentMethod           @default(WALLET)
   amount        Int // in BDT, always positive; sign implied by type
-  transactionId String? // bKash/Nagad/Rocket trx id submitted by user
+  transactionId String? @unique // bKash/Nagad/Rocket trx id submitted by user
   status        WalletTransactionStatus @default(PENDING)
   note          String?                 @db.Text
   reviewedById  String?
@@ -390,6 +436,7 @@ model WalletTransaction {
 
   user       User  @relation(fields: [userId], references: [id])
   reviewedBy User? @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  usedPaymentSms PaymentSms?
 
   @@index([userId])
   @@index([status])
@@ -506,6 +553,8 @@ enum NotificationType {
   ORDER_NOTE
   ADMIN_ANNOUNCEMENT
   ORDER_FULFILLMENT_ISSUE // admin-only: an order's delivery API failed or had insufficient stock/config
+  ORDER_PAYMENT_MISMATCH // admin-only: a matched payment SMS amount didn't equal the order price (over/under-payment)
+  PAYMENT_SMS_BALANCE_MISMATCH // admin-only: a forwarded payment SMS's reported balance didn't match checkpoint + amount
 }
 
 model Notification {
@@ -615,4 +664,15 @@ model SiteSetting {
   walletIcon           String?
   allowGuestOrders     Boolean @default(false)
   marketEnabled        Boolean @default(true)
+  paymentSmsSecret     String? @db.Text // shared secret the mobile SMS-forwarder app must pass as ?secret= to /api/payment-sms
+
+  // When enabled, /api/payment-sms checks each method's running account
+  // balance chain (checkpoint + this SMS's amount must equal this SMS's
+  // reported balance) before trusting a forwarded payment SMS. Admin sets the
+  // starting checkpoint per method on /admin/sms-settings; it then advances
+  // automatically after every SMS that verifies cleanly.
+  paymentSmsBalanceVerifyEnabled Boolean  @default(false)
+  bkashBalanceCheckpoint         Decimal? @db.Decimal(12, 2)
+  nagadBalanceCheckpoint         Decimal? @db.Decimal(12, 2)
+  rocketBalanceCheckpoint        Decimal? @db.Decimal(12, 2)
 }

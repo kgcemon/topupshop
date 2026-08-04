@@ -40,7 +40,7 @@ export async function notifyAdmins(
   client: Prisma.TransactionClient,
   params: {
     actorId?: string | null;
-    type: "ORDER_FULFILLMENT_ISSUE";
+    type: "ORDER_FULFILLMENT_ISSUE" | "ORDER_PAYMENT_MISMATCH" | "PAYMENT_SMS_BALANCE_MISMATCH";
     message: string;
     link?: string | null;
   }
