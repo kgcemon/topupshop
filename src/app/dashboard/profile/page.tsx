@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatTaka, generateReferralCode } from "@/lib/utils";
+import { formatTaka, generateReferralCode, formatDhakaDate } from "@/lib/utils";
 import { getUserOrderStats, getLeaderboard, getUserReferralStats, getSiteSettings } from "@/lib/data";
 import { getLevelProgress } from "@/lib/levels";
 import { LevelBadge } from "@/components/level-badge";
@@ -38,7 +38,7 @@ export default async function ProfilePage() {
 
   const { current, next, ordersToNext, progressPercent } = getLevelProgress(orderStats.completedOrders);
   const memberSince = user?.createdAt
-    ? new Date(user.createdAt).toLocaleDateString("bn-BD", { year: "numeric", month: "long", day: "numeric" })
+    ? formatDhakaDate(user.createdAt, { year: "numeric", month: "long", day: "numeric" })
     : null;
 
   const nameLockedUntil = user?.nameChangedAt
@@ -46,7 +46,7 @@ export default async function ProfilePage() {
     : null;
   const nameLockedUntilLabel =
     nameLockedUntil && nameLockedUntil > new Date()
-      ? nameLockedUntil.toLocaleDateString("bn-BD", { year: "numeric", month: "long", day: "numeric" })
+      ? formatDhakaDate(nameLockedUntil, { year: "numeric", month: "long", day: "numeric" })
       : null;
 
   return (

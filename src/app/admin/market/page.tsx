@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
-import { formatTaka } from "@/lib/utils";
+import { formatTaka, formatDhakaDate } from "@/lib/utils";
 import {
   approveMarketListingAction,
   rejectMarketListingAction,
@@ -55,7 +55,7 @@ function ListingRow({ listing }: { listing: ListingRow }) {
           </p>
         </div>
         <span className="text-xs text-gray-400">
-          {new Date(listing.createdAt).toLocaleDateString("bn-BD", { dateStyle: "medium" })}
+          {formatDhakaDate(listing.createdAt, { dateStyle: "medium" })}
         </span>
       </div>
 

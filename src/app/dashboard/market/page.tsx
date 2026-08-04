@@ -3,7 +3,7 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { formatTaka } from "@/lib/utils";
+import { formatTaka, formatDhakaDate } from "@/lib/utils";
 import { deleteOwnMarketListingAction, markOwnListingSoldAction } from "@/lib/actions/market-actions";
 
 export const metadata: Metadata = {
@@ -59,7 +59,7 @@ export default async function MyMarketListingsPage() {
                     {status.label}
                   </span>
                   <span className="text-xs text-gray-400">
-                    {new Date(listing.createdAt).toLocaleDateString("bn-BD", { dateStyle: "medium" })}
+                    {formatDhakaDate(listing.createdAt, { dateStyle: "medium" })}
                   </span>
                 </div>
                 <p className="mb-1 text-sm font-bold">{listing.title}</p>

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { getDhakaDayRange, formatOrderNumber } from "@/lib/utils";
+import { getDhakaDayRange, formatOrderNumber, formatDhakaDateTime } from "@/lib/utils";
 import { CopyButton } from "@/components/copy-button";
 import { addUnipinCodesAction, deleteUnipinCodeAction } from "@/lib/actions/unipin-actions";
 
@@ -219,18 +219,18 @@ export default async function AdminUnipinPage({
                       </p>
                       <p>
                         যোগ হয়েছে:{" "}
-                        {new Date(match.createdAt).toLocaleString("bn-BD", { dateStyle: "medium", timeStyle: "short" })}
+                        {formatDhakaDateTime(match.createdAt, { dateStyle: "medium", timeStyle: "short" })}
                       </p>
                       {match.usedAt && (
                         <p>
                           Used at:{" "}
-                          {new Date(match.usedAt).toLocaleString("bn-BD", { dateStyle: "medium", timeStyle: "short" })}
+                          {formatDhakaDateTime(match.usedAt, { dateStyle: "medium", timeStyle: "short" })}
                         </p>
                       )}
                       {match.redeemedAt && (
                         <p>
                           Redeemed at:{" "}
-                          {new Date(match.redeemedAt).toLocaleString("bn-BD", {
+                          {formatDhakaDateTime(match.redeemedAt, {
                             dateStyle: "medium",
                             timeStyle: "short",
                           })}
@@ -269,7 +269,7 @@ export default async function AdminUnipinPage({
                                 {log.apiSetting && <span className="font-semibold">{log.apiSetting.name}</span>}
                                 {log.statusCode !== null && <span>HTTP {log.statusCode}</span>}
                                 <span className="text-gray-500">
-                                  {new Date(log.createdAt).toLocaleString("bn-BD", {
+                                  {formatDhakaDateTime(log.createdAt, {
                                     dateStyle: "medium",
                                     timeStyle: "short",
                                   })}

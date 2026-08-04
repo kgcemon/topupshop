@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { formatDhakaDateTime } from "@/lib/utils";
 import { AuthSessionProvider } from "@/components/session-provider";
 import { DashboardNav } from "@/components/dashboard-nav";
 
@@ -38,7 +39,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         {dbUser?.blockReason && <p className="text-sm text-gray-600">কারণ: {dbUser.blockReason}</p>}
         <p className="text-sm text-gray-600">
           {dbUser?.blockedUntil
-            ? `এই একাউন্টটি ${new Date(dbUser.blockedUntil).toLocaleString("bn-BD", { dateStyle: "medium", timeStyle: "short" })} পর্যন্ত ব্লক থাকবে।`
+            ? `এই একাউন্টটি ${formatDhakaDateTime(dbUser.blockedUntil, { dateStyle: "medium", timeStyle: "short" })} পর্যন্ত ব্লক থাকবে।`
             : "এই একাউন্টটি স্থায়ীভাবে ব্লক করা হয়েছে।"}
         </p>
         <p className="text-sm text-gray-600">সহায়তার জন্য আমাদের সাপোর্টে যোগাযোগ করুন।</p>

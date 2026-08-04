@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { StarRating } from "@/components/star-rating";
 import { ReviewForm } from "@/components/review-form";
+import { formatDhakaDate } from "@/lib/utils";
 
 type ReviewWithUser = {
   id: string;
@@ -34,7 +35,7 @@ function ReviewCard({ review }: { review: ReviewWithUser }) {
         <div className="min-w-0">
           <p className="truncate text-sm font-bold text-gray-900">{review.user.name || "User"}</p>
           <p className="text-[11px] text-gray-400">
-            {new Date(review.createdAt).toLocaleDateString("bn-BD", { dateStyle: "medium" })}
+            {formatDhakaDate(review.createdAt, { dateStyle: "medium" })}
           </p>
         </div>
       </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Prisma } from "@/generated/prisma/client";
-import { formatTaka, formatOrderNumber } from "@/lib/utils";
+import { formatTaka, formatOrderNumber, formatDhakaDateTime } from "@/lib/utils";
 import { OrderStatusBadge } from "@/components/status-badge";
 import { CopyButton } from "@/components/copy-button";
 import { updateOrderStatusAction, deleteOrderAction, deleteOrdersAction } from "@/lib/actions/admin-actions";
@@ -19,7 +19,7 @@ export type AdminOrderListItem = Prisma.OrderGetPayload<{
 }>;
 
 function fmtDate(d: Date) {
-  return new Date(d).toLocaleString("bn-BD", { dateStyle: "medium", timeStyle: "short" });
+  return formatDhakaDateTime(d, { dateStyle: "medium", timeStyle: "short" });
 }
 
 function ChevronIcon({ open }: { open: boolean }) {

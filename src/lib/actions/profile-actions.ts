@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { profileUpdateSchema } from "@/lib/validation";
 import { saveUploadedAvatar } from "@/lib/upload";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { formatDhakaDate } from "@/lib/utils";
 import type { ActionState } from "@/lib/actions/auth-actions";
 
 const NAME_CHANGE_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -58,7 +59,7 @@ export async function updateProfileAction(
   if (isNameChanging && currentUser.nameChangedAt) {
     const nextAllowedAt = new Date(currentUser.nameChangedAt.getTime() + NAME_CHANGE_COOLDOWN_MS);
     if (nextAllowedAt > new Date()) {
-      const nextAllowedLabel = nextAllowedAt.toLocaleDateString("bn-BD", {
+      const nextAllowedLabel = formatDhakaDate(nextAllowedAt, {
         year: "numeric",
         month: "long",
         day: "numeric",

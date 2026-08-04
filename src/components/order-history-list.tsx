@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { formatTaka, formatOrderNumber } from "@/lib/utils";
+import { formatTaka, formatOrderNumber, formatDhakaDateTime } from "@/lib/utils";
 import { OrderStatusBadge } from "@/components/status-badge";
 
 type OrderHistoryEntry = {
@@ -62,7 +62,7 @@ export function OrderHistoryList({ history }: { history: OrderHistoryEntry[] }) 
                     <OrderStatusBadge status={order.status} />
                   </td>
                   <td className="px-2 py-1.5 whitespace-nowrap">
-                    {new Date(order.createdAt).toLocaleString("bn-BD", { dateStyle: "short", timeStyle: "short" })}
+                    {formatDhakaDateTime(order.createdAt, { dateStyle: "short", timeStyle: "short" })}
                   </td>
                 </tr>
               ))}

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatTaka, formatOrderNumber } from "@/lib/utils";
+import { formatTaka, formatOrderNumber, formatDhakaDateTime } from "@/lib/utils";
 import { OrderStatusBadge } from "@/components/status-badge";
 
 const PAGE_SIZE = 20;
@@ -56,7 +56,7 @@ export default async function OrderHistoryPage({
                   <dt>Method</dt>
                   <dd className="text-right">{order.paymentMethod}</dd>
                   <dt>Date</dt>
-                  <dd className="text-right">{new Date(order.createdAt).toLocaleString("bn-BD")}</dd>
+                  <dd className="text-right">{formatDhakaDateTime(order.createdAt)}</dd>
                 </dl>
               </div>
             ))}
@@ -90,7 +90,7 @@ export default async function OrderHistoryPage({
                       <OrderStatusBadge status={order.status} />
                     </td>
                     <td className="py-3 pr-3 text-xs text-gray-500">
-                      {new Date(order.createdAt).toLocaleString("bn-BD")}
+                      {formatDhakaDateTime(order.createdAt)}
                     </td>
                   </tr>
                 ))}

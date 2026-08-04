@@ -27,6 +27,16 @@ export function slugify(input: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+const DHAKA_TIME_ZONE = "Asia/Dhaka";
+
+export function formatDhakaDate(date: Date | string, options?: Intl.DateTimeFormatOptions) {
+  return new Date(date).toLocaleDateString("bn-BD", { timeZone: DHAKA_TIME_ZONE, ...options });
+}
+
+export function formatDhakaDateTime(date: Date | string, options?: Intl.DateTimeFormatOptions) {
+  return new Date(date).toLocaleString("bn-BD", { timeZone: DHAKA_TIME_ZONE, ...options });
+}
+
 const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000; // Asia/Dhaka is UTC+6, no DST
 
 /**

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
-import { formatTaka } from "@/lib/utils";
+import { formatTaka, formatDhakaDate } from "@/lib/utils";
 import { UserBlockControl } from "@/components/user-block-control";
 import { LoginHistoryList } from "@/components/login-history-list";
 import { OrderHistoryList } from "@/components/order-history-list";
@@ -117,9 +117,7 @@ export default async function AdminUsersPage({
         )}
         {users.map((user) => {
           const initial = (user.name || user.email || "U").trim().charAt(0).toUpperCase();
-          const joined = new Date(user.createdAt).toLocaleDateString("bn-BD", {
-            dateStyle: "medium",
-          });
+          const joined = formatDhakaDate(user.createdAt, { dateStyle: "medium" });
 
           return (
             <div key={user.id} className="rounded-lg border border-gray-200 p-3 text-sm sm:p-4">

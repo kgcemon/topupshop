@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { blockUserAction, unblockUserAction } from "@/lib/actions/admin-actions";
+import { formatDhakaDate } from "@/lib/utils";
 
 export function UserBlockControl({
   userId,
@@ -31,7 +32,7 @@ export function UserBlockControl({
     return (
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-bold text-red-700">
-          ব্লকড {blockedUntil ? `· ${new Date(blockedUntil).toLocaleDateString("bn-BD", { dateStyle: "medium" })} পর্যন্ত` : "· স্থায়ী"}
+          ব্লকড {blockedUntil ? `· ${formatDhakaDate(blockedUntil, { dateStyle: "medium" })} পর্যন্ত` : "· স্থায়ী"}
         </span>
         {blockReason && <span className="text-xs text-gray-500">({blockReason})</span>}
         <form action={unblockUserAction}>

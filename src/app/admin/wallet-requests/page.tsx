@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { formatTaka } from "@/lib/utils";
+import { formatTaka, formatDhakaDateTime } from "@/lib/utils";
 import { WalletStatusBadge } from "@/components/status-badge";
 import { updateWalletTransactionAction } from "@/lib/actions/admin-actions";
 
@@ -24,7 +24,7 @@ export default async function AdminWalletRequestsPage() {
               </p>
               <p className="text-xs text-gray-500">
                 {tx.method} · Trx: {tx.transactionId} ·{" "}
-                {new Date(tx.createdAt).toLocaleString("bn-BD")}
+                {formatDhakaDateTime(tx.createdAt)}
               </p>
             </div>
             <div className="flex items-center gap-3">

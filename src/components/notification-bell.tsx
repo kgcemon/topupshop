@@ -5,6 +5,7 @@ import {
   markNotificationReadAction,
   markAllNotificationsReadAction,
 } from "@/lib/actions/notification-actions";
+import { formatDhakaDateTime } from "@/lib/utils";
 
 type NotificationItem = {
   id: string;
@@ -98,7 +99,7 @@ export function NotificationBell({
                             contains a user-chosen display name. */}
                         <span className="block text-sm text-gray-700">{n.message}</span>
                         <span className="mt-0.5 block text-[11px] text-gray-400">
-                          {new Date(n.createdAt).toLocaleString("bn-BD", {
+                          {formatDhakaDateTime(n.createdAt, {
                             dateStyle: "medium",
                             timeStyle: "short",
                           })}

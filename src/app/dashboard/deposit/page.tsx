@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSiteSettings } from "@/lib/data";
-import { formatTaka } from "@/lib/utils";
+import { formatTaka, formatDhakaDateTime } from "@/lib/utils";
 import { DepositForm } from "@/components/deposit-form";
 import { WalletStatusBadge } from "@/components/status-badge";
 
@@ -44,7 +44,7 @@ export default async function DepositPage() {
                     {tx.method} · {tx.transactionId}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {new Date(tx.createdAt).toLocaleString("bn-BD")}
+                    {formatDhakaDateTime(tx.createdAt)}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">

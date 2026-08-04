@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatDhakaDateTime } from "@/lib/utils";
 
 type LoginHistoryEntry = {
   id: string;
@@ -40,7 +41,7 @@ export function LoginHistoryList({ history }: { history: LoginHistoryEntry[] }) 
               {history.map((entry) => (
                 <tr key={entry.id} className="border-t border-gray-100">
                   <td className="px-2 py-1.5 whitespace-nowrap">
-                    {new Date(entry.createdAt).toLocaleString("bn-BD", { dateStyle: "short", timeStyle: "short" })}
+                    {formatDhakaDateTime(entry.createdAt, { dateStyle: "short", timeStyle: "short" })}
                   </td>
                   <td className="px-2 py-1.5">{entry.provider}</td>
                   <td className="px-2 py-1.5">{entry.ip}</td>

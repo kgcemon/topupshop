@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { approveReviewAction, unapproveReviewAction, deleteReviewAction } from "@/lib/actions/admin-actions";
 import { StarRating } from "@/components/star-rating";
+import { formatDhakaDate } from "@/lib/utils";
 
 function ReviewRow({
   review,
@@ -24,7 +25,7 @@ function ReviewRow({
           <StarRating rating={review.rating} />
         </div>
         <span className="text-xs text-gray-400">
-          {new Date(review.createdAt).toLocaleDateString("bn-BD", { dateStyle: "medium" })}
+          {formatDhakaDate(review.createdAt, { dateStyle: "medium" })}
         </span>
       </div>
       <Link

@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { placeOrderAction, type OrderActionState } from "@/lib/actions/order-actions";
-import { formatTaka, formatOrderNumber } from "@/lib/utils";
+import { formatTaka, formatOrderNumber, formatDhakaDateTime } from "@/lib/utils";
 import { OrderStatusBadge } from "@/components/status-badge";
 import { PaymentNumberCard } from "@/components/payment-number-card";
 import { WhatsappBargainLink, WhatsAppIcon } from "@/components/whatsapp-bargain-link";
@@ -113,7 +113,7 @@ export function OrderForm({
           {o.transactionId && <DetailRow label="ট্রানজেকশন আইডি" value={o.transactionId} mono />}
           <DetailRow
             label="সময়"
-            value={new Date(o.createdAt).toLocaleString("bn-BD", { dateStyle: "medium", timeStyle: "short" })}
+            value={formatDhakaDateTime(o.createdAt, { dateStyle: "medium", timeStyle: "short" })}
           />
           <div className="flex items-center justify-between border-t border-gray-100 pt-3">
             <span className="text-xs text-gray-500">স্ট্যাটাস</span>
@@ -277,20 +277,27 @@ export function OrderForm({
                   active={method === "WALLET"}
                   icon={
                     paymentIcons.walletIcon ? (
-                      <Image src={paymentIcons.walletIcon} alt="Wallet" width={20} height={20} unoptimized className="h-5 w-5 object-contain" />
+                      <Image src={paymentIcons.walletIcon} alt="Wallet" width={140} height={80} unoptimized className="h-full w-full object-contain" />
                     ) : (
                       <WalletIcon />
                     )
                   }
-                  title="TopUpsBD ওয়ালেট"
                   subtitle="Wallet Pay"
                   onClick={() => setMethod("WALLET")}
                 />
               )}
               <PayOption
                 active={method !== "WALLET"}
-                icon={<MobileBankingIcon />}
-                title="bKash / Nagad / Rocket"
+                icon={
+                  <Image
+                    src="/images/manual-pay-icon.jpg"
+                    alt="Manual Pay"
+                    width={140}
+                    height={80}
+                    unoptimized
+                    className="h-full w-full object-contain"
+                  />
+                }
                 subtitle="Manual Pay"
                 onClick={() => setMethod("BKASH")}
               />
@@ -414,13 +421,11 @@ function DetailRow({ label, value, mono }: { label: string; value: string; mono?
 function PayOption({
   active,
   icon,
-  title,
   subtitle,
   onClick,
 }: {
   active: boolean;
   icon: React.ReactNode;
-  title: string;
   subtitle: string;
   onClick: () => void;
 }) {
@@ -428,13 +433,19 @@ function PayOption({
     <button
       type="button"
       onClick={onClick}
-      className={`flex flex-col items-center rounded-lg border-2 p-3 text-center transition-colors ${
-        active ? "border-primary-500 bg-primary-50" : "border-gray-200"
+      className={`relative flex flex-col overflow-hidden rounded-lg border-2 bg-white text-center transition-colors ${
+        active ? "border-primary-500" : "border-gray-200"
       }`}
     >
-      <span className={active ? "text-primary-600" : "text-gray-400"}>{icon}</span>
-      <p className="mt-1.5 text-xs font-bold">{title}</p>
-      <p className="mt-0.5 text-[10px] text-gray-500">{subtitle}</p>
+      {active && (
+        <span className="absolute left-0 top-0 flex h-6 w-6 items-center justify-center rounded-br-lg bg-primary-500 text-white">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-3.5 w-3.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M20 6 9 17l-5-5" />
+          </svg>
+        </span>
+      )}
+      <span className="flex h-20 w-full items-center justify-center p-3">{icon}</span>
+      <span className="border-t border-gray-200 bg-gray-100 py-1.5 text-xs font-bold text-gray-700">{subtitle}</span>
     </button>
   );
 }
@@ -447,19 +458,10 @@ const METHOD_COLORS: Record<"BKASH" | "NAGAD" | "ROCKET", string> = {
 
 function WalletIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-14 w-14 text-primary-500">
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 7a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v1" />
       <rect x="2" y="7" width="20" height="12" rx="2" />
       <circle cx="17" cy="13" r="1.3" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-function MobileBankingIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
-      <rect x="6" y="2" width="12" height="20" rx="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path strokeLinecap="round" d="M10 18h4" />
     </svg>
   );
 }

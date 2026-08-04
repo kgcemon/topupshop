@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { formatTaka } from "@/lib/utils";
+import { formatTaka, formatDhakaDate } from "@/lib/utils";
 
 type CardPost = {
   id: number;
@@ -36,7 +36,7 @@ export function BlogPostCard({ post }: { post: CardPost }) {
       </div>
       <div className="flex min-w-0 flex-1 flex-col justify-center p-3 sm:justify-start sm:p-4">
         <p className="mb-1 text-[11px] text-gray-500 sm:text-xs">
-          {new Date(post.publishedAt).toLocaleDateString("bn-BD", { dateStyle: "medium" })}
+          {formatDhakaDate(post.publishedAt, { dateStyle: "medium" })}
         </p>
         <h3 className="mb-1 line-clamp-2 text-sm font-bold leading-snug text-gray-900 group-hover:text-primary-600 sm:text-base">
           {post.title}

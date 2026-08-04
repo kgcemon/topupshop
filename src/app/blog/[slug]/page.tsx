@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import { marked } from "marked";
 import { auth } from "@/lib/auth";
 import { getBlogPostBySlug, isBlogPostLikedByUser, getLikedBlogCommentIds } from "@/lib/data";
-import { formatTaka } from "@/lib/utils";
+import { formatTaka, formatDhakaDate } from "@/lib/utils";
 import { deleteBlogCommentAction } from "@/lib/actions/blog-actions";
 import { BlogViewTracker } from "@/components/blog-view-tracker";
 import { BlogLikeButton } from "@/components/blog-like-button";
@@ -169,7 +169,7 @@ export default async function BlogPostPage({
           </h1>
 
           <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-gray-100 pb-6 text-sm text-gray-500">
-            <span>{new Date(post.publishedAt).toLocaleDateString("bn-BD", { dateStyle: "long" })}</span>
+            <span>{formatDhakaDate(post.publishedAt, { dateStyle: "long" })}</span>
             <span className="flex items-center gap-1.5">
               <EyeIcon />
               {formatTaka(post.viewCount)} ভিউ
@@ -297,7 +297,7 @@ function CommentItem({
             <p className="text-sm font-bold text-gray-900">{comment.user.name || "User"}</p>
             <div className="flex items-center gap-2">
               <p className="text-[11px] text-gray-400">
-                {new Date(comment.createdAt).toLocaleDateString("bn-BD", { dateStyle: "medium" })}
+                {formatDhakaDate(comment.createdAt, { dateStyle: "medium" })}
               </p>
               {isAdmin && (
                 <form action={deleteBlogCommentAction}>

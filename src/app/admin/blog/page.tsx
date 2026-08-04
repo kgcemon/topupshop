@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { toggleBlogPostPublishedAction } from "@/lib/actions/admin-actions";
+import { formatDhakaDate } from "@/lib/utils";
 
 export default async function AdminBlogPage() {
   const posts = await prisma.blogPost.findMany({ orderBy: { createdAt: "desc" } });
@@ -47,7 +48,7 @@ export default async function AdminBlogPage() {
                 <p className="truncate font-bold">{post.title}</p>
                 <p className="truncate text-xs text-gray-500">
                   /{post.slug} ·{" "}
-                  {new Date(post.publishedAt).toLocaleDateString("bn-BD", { dateStyle: "medium" })}
+                  {formatDhakaDate(post.publishedAt, { dateStyle: "medium" })}
                 </p>
               </div>
             </div>
