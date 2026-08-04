@@ -82,6 +82,7 @@ export const productFormSchema = z.object({
   externalUrl: z.string().trim().url().optional().or(z.literal("")),
   category: z.string().trim().min(1),
   description: z.string().trim().optional().or(z.literal("")),
+  inputLabel: z.string().trim().max(60).optional().or(z.literal("")),
   isActive: z.coerce.boolean(),
   stockOut: z.coerce.boolean(),
   sortOrder: z.coerce.number().int(),

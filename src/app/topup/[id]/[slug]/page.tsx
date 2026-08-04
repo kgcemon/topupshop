@@ -168,6 +168,7 @@ export default async function TopupProductPage({
       <OrderForm
         productId={product.id}
         options={product.rechargeOptions}
+        inputLabel={product.inputLabel}
         isLoggedIn={!!session?.user}
         walletBalance={walletBalance}
         stockOut={product.stockOut}

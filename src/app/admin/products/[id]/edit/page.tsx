@@ -47,6 +47,7 @@ export default async function EditProductPage({
             externalUrl: product.externalUrl,
             category: product.category,
             description: product.description,
+            inputLabel: product.inputLabel,
             rules: Array.isArray(product.rules) ? (product.rules as string[]) : [],
             isActive: product.isActive,
             stockOut: product.stockOut,

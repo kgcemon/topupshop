@@ -194,6 +194,39 @@ export async function updateOrderStatusAction(formData: FormData) {
   redirect(`/admin/orders?${params.toString()}`);
 }
 
+function orderRedirectHref(formData: FormData) {
+  const redirectStatus = String(formData.get("redirectStatus") || "ALL");
+  const redirectQuery = String(formData.get("redirectQuery") || "");
+  const params = new URLSearchParams({ status: redirectStatus });
+  if (redirectQuery) params.set("q", redirectQuery);
+  return `/admin/orders?${params.toString()}`;
+}
+
+export async function deleteOrderAction(formData: FormData) {
+  await requireAdmin();
+  const orderId = String(formData.get("orderId") || "");
+  const href = orderRedirectHref(formData);
+  if (!orderId) redirect(href);
+
+  await prisma.order.delete({ where: { id: orderId } }).catch(() => null);
+
+  revalidatePath("/admin/orders");
+  redirect(href);
+}
+
+export async function deleteOrdersAction(formData: FormData) {
+  await requireAdmin();
+  const orderIds = formData.getAll("orderIds").map(String).filter(Boolean);
+  const href = orderRedirectHref(formData);
+
+  if (orderIds.length > 0) {
+    await prisma.order.deleteMany({ where: { id: { in: orderIds } } });
+  }
+
+  revalidatePath("/admin/orders");
+  redirect(href);
+}
+
 export async function updateWalletTransactionAction(formData: FormData) {
   const session = await requireAdmin();
 
@@ -392,6 +425,7 @@ function parseProductForm(formData: FormData, resolvedImage: string) {
     externalUrl: formData.get("externalUrl") || "",
     category: formData.get("category"),
     description: formData.get("description") || "",
+    inputLabel: formData.get("inputLabel") || "",
     isActive: formData.get("isActive") === "on",
     stockOut: formData.get("stockOut") === "on",
     sortOrder: formData.get("sortOrder") || 0,
@@ -435,6 +469,7 @@ export async function createProductAction(
       ...parsed.data,
       externalUrl: parsed.data.externalUrl || null,
       description: parsed.data.description || null,
+      inputLabel: parsed.data.inputLabel || null,
       rules: rulesFromTextarea(formData.get("rules")),
     },
   });
@@ -484,6 +519,7 @@ export async function updateProductAction(
       ...parsed.data,
       externalUrl: parsed.data.externalUrl || null,
       description: parsed.data.description || null,
+      inputLabel: parsed.data.inputLabel || null,
       rules: rulesFromTextarea(formData.get("rules")),
     },
   });

@@ -153,6 +153,7 @@ model Product {
   category    String      @default("Free Fire")
   description String?     @db.Text
   rules       Json? // string[]
+  inputLabel  String? // overrides the checkout "Player ID" field label/placeholder for this product; null = default label
   isActive    Boolean     @default(true)
   stockOut    Boolean     @default(false)
   sortOrder   Int         @default(0)

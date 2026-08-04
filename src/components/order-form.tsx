@@ -26,6 +26,7 @@ const initialState: OrderActionState = {};
 export function OrderForm({
   productId,
   options,
+  inputLabel,
   isLoggedIn,
   walletBalance,
   paymentNumbers,
@@ -36,6 +37,7 @@ export function OrderForm({
 }: {
   productId: number;
   options: RechargeOption[];
+  inputLabel?: string | null;
   isLoggedIn: boolean;
   walletBalance: number;
   paymentNumbers: PaymentNumbers;
@@ -44,6 +46,7 @@ export function OrderForm({
   allowGuestOrders: boolean;
   whatsappNumber: string;
 }) {
+  const playerIdLabel = inputLabel?.trim() || "এখানে প্লেয়ার আইডি কোড দিন";
   const canOrderAsGuest = !isLoggedIn && allowGuestOrders;
   const [selectedOptionId, setSelectedOptionId] = useState<number | undefined>(undefined);
   const [method, setMethod] = useState<"WALLET" | "BKASH" | "NAGAD" | "ROCKET">(
@@ -206,13 +209,13 @@ export function OrderForm({
             </h2>
             <hr className="-mx-5 mb-4 border-t border-gray-200" />
             <label className="mb-1 block text-sm font-semibold" htmlFor="playerId">
-              এখানে প্লেয়ার আইডি কোড দিন
+              {playerIdLabel}
             </label>
             <input
               id="playerId"
               name="playerId"
               required
-              placeholder="এখানে প্লেয়ার আইডি কোড দিন"
+              placeholder={playerIdLabel}
               className="mb-3 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
             {state.fieldErrors?.playerId && (

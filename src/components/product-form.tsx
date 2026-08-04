@@ -14,6 +14,7 @@ type ProductFormValues = {
   externalUrl?: string | null;
   category?: string;
   description?: string | null;
+  inputLabel?: string | null;
   rules?: string[];
   isActive?: boolean;
   stockOut?: boolean;
@@ -139,6 +140,14 @@ export function ProductForm({
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
         />
       </div>
+
+      <TextField
+        label="চেকআউট ইনপুট লেবেল (খালি রাখলে ডিফল্ট 'প্লেয়ার আইডি' থাকবে)"
+        name="inputLabel"
+        defaultValue={defaultValues?.inputLabel ?? ""}
+        placeholder="যেমন: ইউজার আইডি, ইমেইল, UID + Zone ID"
+        error={state.fieldErrors?.inputLabel}
+      />
 
       <div>
         <label className="mb-1 block text-sm font-semibold">Rules &amp; Conditions (এক লাইনে একটি)</label>
