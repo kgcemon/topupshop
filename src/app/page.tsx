@@ -55,7 +55,7 @@ export default async function HomePage() {
       <div className="container mx-auto mb-8 flex flex-nowrap items-center justify-center gap-2 px-3 sm:gap-4 md:px-4">
         <DownloadAppButton />
         <a
-          href="https://t.me/+K3PmqW02YCI2OGRl"
+          href="https://t.me/+3RexJMq7g0JmZDFl"
           target="_blank"
           rel="noopener noreferrer"
           className="flex flex-1 items-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-2.5 py-1.5 transition-shadow hover:shadow-md sm:flex-none sm:gap-3 sm:px-4 sm:py-2"
