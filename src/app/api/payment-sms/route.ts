@@ -57,17 +57,30 @@ export async function POST(request: Request) {
     return respond(false, "Unauthorized", 401);
   }
 
-  const text = await request.text();
+  // The mobile forwarder app sends JSON, but some builds/webhook testers post
+  // multipart or urlencoded form-data instead — accept either by content-type.
+  const contentType = request.headers.get("content-type") ?? "";
+  let sender = "";
+  let sms = "";
 
-  let body: Record<string, unknown>;
-  try {
-    body = JSON.parse(text);
-  } catch {
-    return respond(false, "Invalid JSON", 400);
+  if (contentType.includes("multipart/form-data") || contentType.includes("application/x-www-form-urlencoded")) {
+    const formData = await request.formData();
+    const senderField = formData.get("sender");
+    const smsField = formData.get("sms");
+    sender = typeof senderField === "string" ? senderField.trim() : "";
+    sms = typeof smsField === "string" ? smsField : "";
+  } else {
+    const text = await request.text();
+    let body: Record<string, unknown>;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      return respond(false, "Invalid JSON", 400);
+    }
+    sender = typeof body.sender === "string" ? body.sender.trim() : "";
+    sms = typeof body.sms === "string" ? body.sms : "";
   }
 
-  const sender = typeof body.sender === "string" ? body.sender.trim() : "";
-  const sms = typeof body.sms === "string" ? body.sms : "";
   if (!sender || !sms) {
     return respond(false, "Missing required fields", 400);
   }
