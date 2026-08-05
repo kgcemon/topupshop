@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import Image from "next/image";
-import { updateSiteSettingsAction } from "@/lib/actions/admin-actions";
+import { updateSiteSettingsAction, sendTestEmailAction } from "@/lib/actions/admin-actions";
 import type { ActionState } from "@/lib/actions/auth-actions";
 
 type SiteSettingsValues = {
@@ -39,6 +39,7 @@ const initialState: ActionState = {};
 
 export function SiteSettingsForm({ defaultValues }: { defaultValues: SiteSettingsValues }) {
   const [state, formAction, pending] = useActionState(updateSiteSettingsAction, initialState);
+  const [testState, testFormAction, testPending] = useActionState(sendTestEmailAction, initialState);
   const [ogPreview, setOgPreview] = useState<string | null>(defaultValues.ogImage);
   const [faviconPreview, setFaviconPreview] = useState<string | null>(defaultValues.favicon);
   const [walletIconPreview, setWalletIconPreview] = useState<string | null>(defaultValues.walletIcon);
@@ -306,6 +307,36 @@ export function SiteSettingsForm({ defaultValues }: { defaultValues: SiteSetting
             </span>
           </span>
         </label>
+
+        <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4">
+          <label className="mb-1 block text-sm font-semibold">SMTP কানেকশন টেস্ট করুন</label>
+          <p className="mb-3 text-xs text-gray-500">
+            আগে উপরের তথ্য <span className="font-semibold">সেভ করুন</span>, তারপর এখানে একটি ইমেইল ঠিকানা
+            দিয়ে টেস্ট মেইল পাঠান। সমস্যা থাকলে এখানেই সঠিক কারণ দেখতে পাবেন।
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              name="testEmail"
+              type="email"
+              placeholder="you@example.com"
+              defaultValue={defaultValues.smtpFromEmail || defaultValues.contactEmail || ""}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm sm:flex-1"
+            />
+            <button
+              type="submit"
+              formAction={testFormAction}
+              formNoValidate
+              disabled={testPending}
+              className="shrink-0 rounded-md border border-primary-500 px-4 py-2 text-sm font-semibold text-primary-600 hover:bg-primary-50 disabled:opacity-60"
+            >
+              {testPending ? "পাঠানো হচ্ছে..." : "টেস্ট মেইল পাঠান"}
+            </button>
+          </div>
+          {testState.error && <p className="mt-2 text-sm text-red-600">❌ {testState.error}</p>}
+          {testState.success && (
+            <p className="mt-2 text-sm font-semibold text-primary-600">✅ টেস্ট মেইল সফলভাবে পাঠানো হয়েছে — ইনবক্স চেক করুন।</p>
+          )}
+        </div>
       </Section>
 
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}

@@ -42,6 +42,68 @@ export async function sendMail(params: { to: string; subject: string; html: stri
   }
 }
 
+/**
+ * Sends a one-off test email using the currently saved SMTP settings and
+ * surfaces the real success/failure back to the caller — unlike sendMail(),
+ * which is intentionally silent so a broken SMTP config never breaks order
+ * actions. Used by the admin "টেস্ট মেইল পাঠান" button so a misconfigured
+ * host/port/credential shows up immediately instead of failing silently on
+ * the next real customer email.
+ */
+export async function sendTestMail(to: string): Promise<{ success: true } | { success: false; error: string }> {
+  const settings = await getSiteSettings();
+
+  if (!settings.smtpHost || !settings.smtpUser || !settings.smtpPassword) {
+    return { success: false, error: "SMTP Host, User ও Password আগে সেভ করুন — তারপর টেস্ট করুন।" };
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: settings.smtpHost,
+    port: settings.smtpPort ?? 587,
+    secure: settings.smtpSecure,
+    auth: { user: settings.smtpUser, pass: settings.smtpPassword },
+  });
+
+  const fromName = settings.smtpFromName || settings.siteName;
+  const fromEmail = settings.smtpFromEmail || settings.smtpUser;
+
+  try {
+    await transporter.verify();
+    await transporter.sendMail({
+      from: `"${fromName}" <${fromEmail}>`,
+      to,
+      subject: `${settings.siteName} — টেস্ট ইমেইল`,
+      html: emailShell(
+        settings.siteName,
+        `<p>প্রিয় অ্যাডমিন,</p>
+         <p>এটি একটি টেস্ট ইমেইল। আপনার SMTP সেটিংস সঠিকভাবে কাজ করছে এবং ইমেইল পাঠানো যাচ্ছে।</p>`
+      ),
+    });
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: describeSmtpError(error) };
+  }
+}
+
+function describeSmtpError(error: unknown): string {
+  const code = (error as { code?: string } | null | undefined)?.code;
+  const message = error instanceof Error ? error.message : String(error);
+
+  switch (code) {
+    case "EAUTH":
+      return "SMTP লগইন ব্যর্থ হয়েছে — User বা Password ভুল আছে। (Gmail হলে App Password ব্যবহার করুন।)";
+    case "ECONNECTION":
+    case "ESOCKET":
+      return "SMTP সার্ভারে সংযোগ করা যায়নি — Host ও Port ঠিক আছে কিনা যাচাই করুন।";
+    case "ETIMEDOUT":
+      return "SMTP সার্ভারে সংযোগে সময় শেষ হয়ে গেছে — Host/Port অথবা নেটওয়ার্ক ফায়ারওয়াল চেক করুন।";
+    case "EENVELOPE":
+      return "প্রাপকের ইমেইল ঠিকানাটি সার্ভার প্রত্যাখ্যান করেছে — ঠিকানাটি যাচাই করুন।";
+    default:
+      return `ইমেইল পাঠানো ব্যর্থ হয়েছে: ${message}`;
+  }
+}
+
 // Convenience wrappers used by the order/wallet actions — resolve the
 // current siteName for the template, then hand off to sendMail (which does
 // its own smtpEnabled/credential check). `to` is typically order.user?.email,

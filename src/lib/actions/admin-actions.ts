@@ -18,7 +18,7 @@ import { createNotification } from "@/lib/notifications";
 import { formatOrderNumber } from "@/lib/utils";
 import { processOrderFulfillment } from "@/lib/order-fulfillment";
 import { submitToIndexNow } from "@/lib/indexnow";
-import { sendOrderDeliveredEmail, sendOrderCancelledEmail, sendWalletTopupEmail } from "@/lib/mailer";
+import { sendOrderDeliveredEmail, sendOrderCancelledEmail, sendWalletTopupEmail, sendTestMail } from "@/lib/mailer";
 
 async function requireAdmin() {
   const session = await auth();
@@ -1053,6 +1053,25 @@ export async function updateSiteSettingsAction(
 
   revalidatePath("/", "layout");
   revalidatePath("/admin/settings");
+  return { success: true };
+}
+
+export async function sendTestEmailAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireAdmin();
+
+  const testEmail = String(formData.get("testEmail") || "").trim();
+  if (!testEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(testEmail)) {
+    return { error: "সঠিক একটি ইমেইল ঠিকানা দিন।" };
+  }
+
+  const result = await sendTestMail(testEmail);
+  if (!result.success) {
+    return { error: result.error };
+  }
+
   return { success: true };
 }
 
