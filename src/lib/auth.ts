@@ -73,7 +73,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id as string;
-        token.role = (user as { role?: "USER" | "ADMIN" }).role ?? "USER";
+        token.role = (user as { role?: "USER" | "MANAGER" | "ADMIN" }).role ?? "USER";
       }
       // Keep role/name/image fresh in case they change (e.g. promoted to admin,
       // or profile edited) without forcing the user to sign out. Cheap lookup,
@@ -94,7 +94,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
-        session.user.role = (token.role as "USER" | "ADMIN") ?? "USER";
+        session.user.role = (token.role as "USER" | "MANAGER" | "ADMIN") ?? "USER";
       }
       return session;
     },

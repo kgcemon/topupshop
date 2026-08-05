@@ -30,6 +30,23 @@ export const profileUpdateSchema = z.object({
     .regex(/^01[3-9]\d{8}$/, "সঠিক বাংলাদেশি মোবাইল নাম্বার দিন (01xxxxxxxxx)"),
 });
 
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "বর্তমান পাসওয়ার্ড দিন"),
+    newPassword: z.string().min(6, "পাসওয়ার্ড কমপক্ষে ৬ ক্যারেক্টার হতে হবে"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "পাসওয়ার্ড মিলছে না",
+    path: ["confirmPassword"],
+  });
+
+export const createManagerSchema = z.object({
+  name: z.string().trim().min(2, "নাম কমপক্ষে ২ ক্যারেক্টার হতে হবে").max(60),
+  email: z.string().trim().toLowerCase().email("সঠিক ইমেইল দিন"),
+  password: z.string().min(6, "পাসওয়ার্ড কমপক্ষে ৬ ক্যারেক্টার হতে হবে"),
+});
+
 export const orderSchema = z.object({
   productId: z.coerce.number().int().positive(),
   rechargeOptionId: z.coerce.number().int().positive(),

@@ -8,6 +8,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+// Managers only get order viewing/status-changing rights — this is the only
+// nav item (and the only route, enforced below) they're allowed to see.
+function buildManagerNav(pendingOrders: number) {
+  return [{ href: "/admin/orders", label: "Orders", badge: pendingOrders }];
+}
+
 function buildNav(
   pendingOrders: number,
   pendingWalletRequests: number,
@@ -37,8 +43,22 @@ function buildNav(
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
-  if (session?.user?.role !== "ADMIN") {
+  const role = session?.user?.role;
+  if (role !== "ADMIN" && role !== "MANAGER") {
     redirect("/dashboard");
+  }
+
+  // Managers only ever see the Orders tab, so skip the extra counts entirely.
+  if (role === "MANAGER") {
+    const pendingOrders = await prisma.order.count({ where: { status: "PENDING" } });
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid gap-6 md:grid-cols-[200px_1fr]">
+          <AdminNav items={buildManagerNav(pendingOrders)} />
+          <div className="min-w-0">{children}</div>
+        </div>
+      </div>
+    );
   }
 
   const [pendingOrders, pendingWalletRequests, pendingReviews, pendingMarketListings] = await Promise.all([

@@ -56,10 +56,12 @@ export function AdminOrderList({
   orders,
   filter,
   query,
+  canDelete,
 }: {
   orders: AdminOrderListItem[];
   filter: string;
   query: string;
+  canDelete: boolean;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const selectAllRef = useRef<HTMLInputElement>(null);
@@ -105,7 +107,7 @@ export function AdminOrderList({
           />
           সব সিলেক্ট করুন
         </label>
-        {selected.size > 0 && (
+        {canDelete && selected.size > 0 && (
           <form
             action={deleteOrdersAction}
             onSubmit={(e) => {
@@ -141,6 +143,7 @@ export function AdminOrderList({
             query={query}
             selected={selected.has(order.id)}
             onToggleSelect={() => toggle(order.id)}
+            canDelete={canDelete}
           />
         ))}
       </div>
@@ -154,12 +157,14 @@ function OrderCard({
   query,
   selected,
   onToggleSelect,
+  canDelete,
 }: {
   order: AdminOrderListItem;
   filter: string;
   query: string;
   selected: boolean;
   onToggleSelect: () => void;
+  canDelete: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -210,25 +215,27 @@ function OrderCard({
                 <ChevronIcon open={open} />
               </button>
 
-              <form
-                action={deleteOrderAction}
-                onSubmit={(e) => {
-                  if (!confirm(`অর্ডার ${formatOrderNumber(order.orderSerial)} স্থায়ীভাবে ডিলিট করবেন?`)) {
-                    e.preventDefault();
-                  }
-                }}
-              >
-                <input type="hidden" name="orderId" value={order.id} />
-                <input type="hidden" name="redirectStatus" value={filter} />
-                <input type="hidden" name="redirectQuery" value={query} />
-                <button
-                  type="submit"
-                  className="flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-[11px] font-bold text-red-600"
+              {canDelete && (
+                <form
+                  action={deleteOrderAction}
+                  onSubmit={(e) => {
+                    if (!confirm(`অর্ডার ${formatOrderNumber(order.orderSerial)} স্থায়ীভাবে ডিলিট করবেন?`)) {
+                      e.preventDefault();
+                    }
+                  }}
                 >
-                  <TrashIcon />
-                  ডিলিট
-                </button>
-              </form>
+                  <input type="hidden" name="orderId" value={order.id} />
+                  <input type="hidden" name="redirectStatus" value={filter} />
+                  <input type="hidden" name="redirectQuery" value={query} />
+                  <button
+                    type="submit"
+                    className="flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-[11px] font-bold text-red-600"
+                  >
+                    <TrashIcon />
+                    ডিলিট
+                  </button>
+                </form>
+              )}
             </div>
           </div>
 
@@ -470,26 +477,28 @@ function OrderCard({
               </button>
             </form>
 
-            <form
-              action={deleteOrderAction}
-              onSubmit={(e) => {
-                if (!confirm(`অর্ডার ${formatOrderNumber(order.orderSerial)} স্থায়ীভাবে ডিলিট করবেন?`)) {
-                  e.preventDefault();
-                }
-              }}
-              className="mt-2 hidden justify-end sm:flex"
-            >
-              <input type="hidden" name="orderId" value={order.id} />
-              <input type="hidden" name="redirectStatus" value={filter} />
-              <input type="hidden" name="redirectQuery" value={query} />
-              <button
-                type="submit"
-                className="flex items-center gap-1 rounded-md border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50"
+            {canDelete && (
+              <form
+                action={deleteOrderAction}
+                onSubmit={(e) => {
+                  if (!confirm(`অর্ডার ${formatOrderNumber(order.orderSerial)} স্থায়ীভাবে ডিলিট করবেন?`)) {
+                    e.preventDefault();
+                  }
+                }}
+                className="mt-2 hidden justify-end sm:flex"
               >
-                <TrashIcon />
-                অর্ডার ডিলিট করুন
-              </button>
-            </form>
+                <input type="hidden" name="orderId" value={order.id} />
+                <input type="hidden" name="redirectStatus" value={filter} />
+                <input type="hidden" name="redirectQuery" value={query} />
+                <button
+                  type="submit"
+                  className="flex items-center gap-1 rounded-md border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50"
+                >
+                  <TrashIcon />
+                  অর্ডার ডিলিট করুন
+                </button>
+              </form>
+            )}
           </div>
         </div>
       </div>

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import bcrypt from "bcryptjs";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -10,6 +11,8 @@ import {
   siteSettingsSchema,
   sectionFormSchema,
   broadcastNotificationSchema,
+  changePasswordSchema,
+  createManagerSchema,
 } from "@/lib/validation";
 import type { ActionState } from "@/lib/actions/auth-actions";
 import { saveUploadedImage, saveUploadedIcon } from "@/lib/upload";
@@ -28,8 +31,18 @@ async function requireAdmin() {
   return session;
 }
 
+// Orders are the one area a MANAGER is allowed to touch (view + status change) —
+// everything else in the admin panel stays ADMIN-only via requireAdmin() above.
+async function requireStaff() {
+  const session = await auth();
+  if (session?.user?.role !== "ADMIN" && session?.user?.role !== "MANAGER") {
+    throw new Error("Unauthorized: admin or manager access required");
+  }
+  return session;
+}
+
 export async function updateOrderStatusAction(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requireStaff();
 
   const orderId = String(formData.get("orderId"));
   const status = String(formData.get("status")) as
@@ -1085,7 +1098,7 @@ export async function blockUserAction(formData: FormData) {
   if (!userId) return;
 
   const target = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
-  if (!target || target.role === "ADMIN") return; // never block admins
+  if (!target || target.role === "ADMIN" || target.role === "MANAGER") return; // never block admins/managers
 
   const days = BLOCK_DURATION_DAYS[duration];
   const blockedUntil = days ? new Date(Date.now() + days * 24 * 60 * 60 * 1000) : null;
@@ -1151,6 +1164,86 @@ export async function unblockUserAction(formData: FormData) {
   await prisma.user.update({
     where: { id: userId },
     data: { isBlocked: false, blockedUntil: null, blockReason: null },
+  });
+
+  revalidatePath("/admin/users");
+}
+
+// Available to both ADMIN and MANAGER — each admin-panel account manages its
+// own password rather than admins being able to set a manager's password.
+export async function changeOwnPasswordAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const session = await requireStaff();
+
+  const parsed = changePasswordSchema.safeParse({
+    currentPassword: formData.get("currentPassword"),
+    newPassword: formData.get("newPassword"),
+    confirmPassword: formData.get("confirmPassword"),
+  });
+  if (!parsed.success) {
+    return { fieldErrors: fieldErrorsFrom(parsed.error.issues) };
+  }
+
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: session.user.id } });
+  if (!user.password) {
+    return { error: "এই একাউন্টে কোনো পাসওয়ার্ড সেট নেই (Google দিয়ে সাইন ইন করা)।" };
+  }
+
+  const isValid = await bcrypt.compare(parsed.data.currentPassword, user.password);
+  if (!isValid) {
+    return { fieldErrors: { currentPassword: "বর্তমান পাসওয়ার্ড সঠিক নয়" } };
+  }
+
+  const hashedPassword = await bcrypt.hash(parsed.data.newPassword, 12);
+  await prisma.user.update({ where: { id: session.user.id }, data: { password: hashedPassword } });
+
+  return { success: true };
+}
+
+export async function createManagerAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireAdmin();
+
+  const parsed = createManagerSchema.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) {
+    return { fieldErrors: fieldErrorsFrom(parsed.error.issues) };
+  }
+
+  const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+  if (existing) {
+    return { fieldErrors: { email: "এই ইমেইল দিয়ে ইতিমধ্যে একাউন্ট আছে" } };
+  }
+
+  const hashedPassword = await bcrypt.hash(parsed.data.password, 12);
+  await prisma.user.create({
+    data: {
+      name: parsed.data.name,
+      email: parsed.data.email,
+      password: hashedPassword,
+      role: "MANAGER",
+    },
+  });
+
+  revalidatePath("/admin/users");
+  return { success: true };
+}
+
+export async function removeManagerAction(formData: FormData) {
+  await requireAdmin();
+  const userId = String(formData.get("userId") || "");
+  if (!userId) return;
+
+  await prisma.user.updateMany({
+    where: { id: userId, role: "MANAGER" },
+    data: { role: "USER" },
   });
 
   revalidatePath("/admin/users");

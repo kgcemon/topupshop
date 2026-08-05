@@ -18,8 +18,18 @@ export const proxy = auth((req) => {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isAdminRoute && session?.user?.role !== "ADMIN") {
-    return NextResponse.redirect(new URL("/dashboard", req.nextUrl));
+  if (isAdminRoute) {
+    const role = session?.user?.role;
+    // Managers only get order viewing/status-changing rights — bounce them to
+    // /admin/orders for every other admin route instead of /dashboard, since
+    // they do belong in the admin panel, just not anywhere else in it.
+    if (role === "MANAGER") {
+      if (!pathname.startsWith("/admin/orders")) {
+        return NextResponse.redirect(new URL("/admin/orders", req.nextUrl));
+      }
+    } else if (role !== "ADMIN") {
+      return NextResponse.redirect(new URL("/dashboard", req.nextUrl));
+    }
   }
 
   const response = NextResponse.next();

@@ -21,6 +21,8 @@ export async function SiteHeader() {
     unreadCount = unread;
   }
 
+  const isStaff = session?.user?.role === "ADMIN" || session?.user?.role === "MANAGER";
+
   return (
     <header className="bg-white shadow-sm sticky top-0 z-30">
       <div className="container mx-auto px-3 py-3 md:px-4">
@@ -42,7 +44,7 @@ export async function SiteHeader() {
                 { href: "/market", label: "Market" },
                 { href: "/blog", label: "Blog" },
                 { href: "/contact-us", label: "Contact Us" },
-                ...(session?.user?.role === "ADMIN" ? [{ href: "/admin", label: "Admin" }] : []),
+                ...(isStaff ? [{ href: "/admin", label: "Admin" }] : []),
               ]}
             />
 
@@ -55,7 +57,7 @@ export async function SiteHeader() {
                 email={session.user.email ?? null}
                 image={session.user.image ?? null}
                 walletBalance={walletBalance}
-                isAdmin={session.user.role === "ADMIN"}
+                isAdmin={isStaff}
               >
                 <LogoutButton className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-red-600 hover:bg-red-50 transition-colors" />
               </UserMenu>

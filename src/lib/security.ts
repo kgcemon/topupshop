@@ -59,7 +59,7 @@ export async function applyAbuseBlock({
 
   if (userId) {
     const target = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
-    if (!target || target.role === "ADMIN") return;
+    if (!target || target.role === "ADMIN" || target.role === "MANAGER") return;
 
     await prisma.user.update({
       where: { id: userId },

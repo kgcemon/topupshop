@@ -4,6 +4,8 @@ import { formatTaka, formatDhakaDate } from "@/lib/utils";
 import { UserBlockControl } from "@/components/user-block-control";
 import { LoginHistoryList } from "@/components/login-history-list";
 import { OrderHistoryList } from "@/components/order-history-list";
+import { AddManagerForm } from "@/components/add-manager-form";
+import { RemoveManagerButton } from "@/components/remove-manager-button";
 
 export default async function AdminUsersPage({
   searchParams,
@@ -13,7 +15,7 @@ export default async function AdminUsersPage({
   const { q } = await searchParams;
   const query = (q ?? "").trim();
 
-  const [users, totalUsers, totalAdmins] = await Promise.all([
+  const [users, totalUsers, totalAdmins, totalManagers] = await Promise.all([
     prisma.user.findMany({
       where: query
         ? {
@@ -33,6 +35,7 @@ export default async function AdminUsersPage({
     }),
     prisma.user.count(),
     prisma.user.count({ where: { role: "ADMIN" } }),
+    prisma.user.count({ where: { role: "MANAGER" } }),
   ]);
 
   const userIds = users.map((u) => u.id);
@@ -93,10 +96,15 @@ export default async function AdminUsersPage({
     <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-bold">Users</h1>
-        <div className="flex gap-2 text-xs font-bold">
+        <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
           <span className="rounded-full bg-gray-100 px-3 py-1 text-gray-600">Total {totalUsers}</span>
           <span className="rounded-full bg-primary-50 px-3 py-1 text-primary-700">Admins {totalAdmins}</span>
+          <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">Managers {totalManagers}</span>
         </div>
+      </div>
+
+      <div className="mb-4">
+        <AddManagerForm />
       </div>
 
       <form className="mb-4">
@@ -144,7 +152,11 @@ export default async function AdminUsersPage({
                 </div>
                 <span
                   className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${
-                    user.role === "ADMIN" ? "bg-secondary-900 text-white" : "bg-gray-100 text-gray-600"
+                    user.role === "ADMIN"
+                      ? "bg-secondary-900 text-white"
+                      : user.role === "MANAGER"
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-gray-100 text-gray-600"
                   }`}
                 >
                   {user.role}
@@ -166,7 +178,13 @@ export default async function AdminUsersPage({
               <OrderHistoryList history={orderHistoryByUser.get(user.id) ?? []} />
               <LoginHistoryList history={loginLogsByUser.get(user.id) ?? []} />
 
-              {user.role !== "ADMIN" && (
+              {user.role === "MANAGER" && (
+                <div className="mt-2 flex justify-end border-t border-gray-100 pt-2">
+                  <RemoveManagerButton userId={user.id} />
+                </div>
+              )}
+
+              {user.role === "USER" && (
                 <div className="mt-2 flex justify-end border-t border-gray-100 pt-2">
                   <UserBlockControl
                     userId={user.id}

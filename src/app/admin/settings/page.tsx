@@ -1,11 +1,17 @@
 import { getSiteSettings } from "@/lib/data";
 import { SiteSettingsForm } from "@/components/site-settings-form";
+import { ChangePasswordForm } from "@/components/change-password-form";
 
 export default async function AdminSettingsPage() {
   const settings = await getSiteSettings();
 
   return (
     <div>
+      <div className="mb-8 rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
+        <h1 className="mb-4 text-lg font-bold">আপনার পাসওয়ার্ড পরিবর্তন করুন</h1>
+        <ChangePasswordForm />
+      </div>
+
       <h1 className="mb-4 text-lg font-bold">Site Settings</h1>
       <SiteSettingsForm
         defaultValues={{

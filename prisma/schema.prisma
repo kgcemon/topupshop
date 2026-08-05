@@ -49,6 +49,7 @@ model VerificationToken {
 
 enum Role {
   USER
+  MANAGER
   ADMIN
 }
 
