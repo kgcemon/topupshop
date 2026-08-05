@@ -36,7 +36,13 @@ export const orderSchema = z.object({
   playerId: z.string().trim().min(3, "প্লেয়ার আইডি দিন").max(30),
   playerName: z.string().trim().max(60).optional().or(z.literal("")),
   paymentMethod: z.enum(["WALLET", "BKASH", "NAGAD", "ROCKET"]),
-  transactionId: z.string().trim().max(60).optional().or(z.literal("")),
+  transactionId: z
+    .string()
+    .trim()
+    .max(60)
+    .regex(/^[A-Za-z0-9]+$/, "ট্রানজেকশন আইডিতে স্পেস বা স্পেশাল ক্যারেক্টার ব্যবহার করা যাবে না")
+    .optional()
+    .or(z.literal("")),
 });
 
 export const guestContactSchema = z.object({
@@ -50,7 +56,12 @@ export const guestContactSchema = z.object({
 export const depositSchema = z.object({
   amount: z.coerce.number().int().min(20, "সর্বনিম্ন ২০ টাকা জমা দিতে হবে").max(100000),
   method: z.enum(["BKASH", "NAGAD", "ROCKET"]),
-  transactionId: z.string().trim().min(3, "ট্রানজেকশন আইডি দিন").max(60),
+  transactionId: z
+    .string()
+    .trim()
+    .min(3, "ট্রানজেকশন আইডি দিন")
+    .max(60)
+    .regex(/^[A-Za-z0-9]+$/, "ট্রানজেকশন আইডিতে স্পেস বা স্পেশাল ক্যারেক্টার ব্যবহার করা যাবে না"),
 });
 
 export const broadcastNotificationSchema = z.object({
