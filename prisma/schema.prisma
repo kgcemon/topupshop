@@ -675,4 +675,15 @@ model SiteSetting {
   bkashBalanceCheckpoint         Decimal? @db.Decimal(12, 2)
   nagadBalanceCheckpoint         Decimal? @db.Decimal(12, 2)
   rocketBalanceCheckpoint        Decimal? @db.Decimal(12, 2)
+
+  // Master on/off switch + config for outgoing transactional emails (order
+  // delivered/cancelled/refund, wallet top-up) — see src/lib/mailer.ts.
+  smtpEnabled   Boolean @default(false)
+  smtpHost      String?
+  smtpPort      Int?    @default(587)
+  smtpSecure    Boolean @default(false) // true = implicit TLS (port 465), false = STARTTLS (587)
+  smtpUser      String?
+  smtpPassword  String? @db.Text
+  smtpFromEmail String?
+  smtpFromName  String?
 }

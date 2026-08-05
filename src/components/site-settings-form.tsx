@@ -26,6 +26,13 @@ type SiteSettingsValues = {
   walletIcon: string | null;
   referralBonusPercent: number;
   allowGuestOrders: boolean;
+  smtpEnabled: boolean;
+  smtpHost: string | null;
+  smtpPort: number | null;
+  smtpSecure: boolean;
+  smtpUser: string | null;
+  smtpFromEmail: string | null;
+  smtpFromName: string | null;
 };
 
 const initialState: ActionState = {};
@@ -217,6 +224,88 @@ export function SiteSettingsForm({ defaultValues }: { defaultValues: SiteSetting
             সর্বোচ্চ ১.৫%।
           </p>
         </div>
+      </Section>
+
+      <Section title="ইমেইল (SMTP)">
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            name="smtpEnabled"
+            defaultChecked={defaultValues.smtpEnabled}
+            className="mt-1 h-4 w-4 accent-primary-500"
+          />
+          <span>
+            <span className="block text-sm font-semibold">অর্ডার ডেলিভারি/বাতিল/রিফান্ড ও ওয়ালেট টপ-আপে ইমেইল পাঠানো চালু করুন</span>
+            <span className="mt-0.5 block text-xs text-gray-500">
+              চালু করলে নিচের SMTP তথ্য দিয়ে গ্রাহকের ইমেইলে স্বয়ংক্রিয় নোটিফিকেশন পাঠানো হবে। বন্ধ থাকলে
+              কোনো ইমেইল পাঠানো হবে না, বাকি সব ফিচার আগের মতোই কাজ করবে।
+            </span>
+          </span>
+        </label>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="SMTP Host"
+            name="smtpHost"
+            defaultValue={defaultValues.smtpHost ?? ""}
+            placeholder="smtp.gmail.com"
+            error={state.fieldErrors?.smtpHost}
+          />
+          <Field
+            label="SMTP Port"
+            name="smtpPort"
+            defaultValue={String(defaultValues.smtpPort ?? 587)}
+            placeholder="587"
+            error={state.fieldErrors?.smtpPort}
+          />
+          <Field
+            label="SMTP User (ইমেইল)"
+            name="smtpUser"
+            defaultValue={defaultValues.smtpUser ?? ""}
+            placeholder="you@gmail.com"
+            error={state.fieldErrors?.smtpUser}
+          />
+          <div>
+            <label className="mb-1 block text-sm font-semibold">SMTP Password</label>
+            <input
+              type="password"
+              name="smtpPassword"
+              placeholder="খালি রাখলে আগের পাসওয়ার্ড থাকবে"
+              autoComplete="new-password"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <Field
+            label="From Email"
+            name="smtpFromEmail"
+            defaultValue={defaultValues.smtpFromEmail ?? ""}
+            placeholder="খালি রাখলে SMTP User ব্যবহার হবে"
+            error={state.fieldErrors?.smtpFromEmail}
+          />
+          <Field
+            label="From Name"
+            name="smtpFromName"
+            defaultValue={defaultValues.smtpFromName ?? ""}
+            placeholder="খালি রাখলে সাইটের নাম ব্যবহার হবে"
+            error={state.fieldErrors?.smtpFromName}
+          />
+        </div>
+
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            name="smtpSecure"
+            defaultChecked={defaultValues.smtpSecure}
+            className="mt-1 h-4 w-4 accent-primary-500"
+          />
+          <span>
+            <span className="block text-sm font-semibold">SSL (পোর্ট 465)</span>
+            <span className="mt-0.5 block text-xs text-gray-500">
+              চালু রাখলে implicit TLS (পোর্ট 465) ব্যবহার হবে। বন্ধ থাকলে STARTTLS (পোর্ট 587) ব্যবহার হবে —
+              বেশিরভাগ প্রোভাইডারের (Gmail সহ) জন্য এটাই ডিফল্ট।
+            </span>
+          </span>
+        </label>
       </Section>
 
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}

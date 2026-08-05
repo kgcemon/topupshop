@@ -18,6 +18,7 @@ import { createNotification } from "@/lib/notifications";
 import { formatOrderNumber } from "@/lib/utils";
 import { processOrderFulfillment } from "@/lib/order-fulfillment";
 import { submitToIndexNow } from "@/lib/indexnow";
+import { sendOrderDeliveredEmail, sendOrderCancelledEmail, sendWalletTopupEmail } from "@/lib/mailer";
 
 async function requireAdmin() {
   const session = await auth();
@@ -49,7 +50,7 @@ export async function updateOrderStatusAction(formData: FormData) {
     await prisma.$transaction(async (tx) => {
       const current = await tx.order.findUniqueOrThrow({
         where: { id: orderId },
-        include: { rechargeOption: true },
+        include: { rechargeOption: true, user: true },
       });
 
       // Also re-attempts when re-submitting APPROVED on an order already stuck there
@@ -101,7 +102,7 @@ export async function updateOrderStatusAction(formData: FormData) {
     });
   }
 
-  await prisma.$transaction(async (tx) => {
+  const { isRefundableRejection } = await prisma.$transaction(async (tx) => {
     // Release any Unipin codes already claimed for this order back to stock —
     // covers rejecting/cancelling an order that had reached RUNNING. Clearing
     // redeemedAt too is essential: a recycled code with a stale redeemedAt
@@ -183,7 +184,26 @@ export async function updateOrderStatusAction(formData: FormData) {
         });
       }
     }
+
+    return { isRefundableRejection };
   });
+
+  // Best-effort, outside the transaction — mirrors processOrderFulfillment
+  // above, never let a slow/broken SMTP server hold DB locks or fail the
+  // status update it's just confirming.
+  if (enteringDelivered) {
+    await sendOrderDeliveredEmail(order.user?.email, {
+      orderNumber: formatOrderNumber(order.orderSerial),
+      amount: order.amount,
+    });
+  }
+  if (enteringCancelledOrRejected) {
+    await sendOrderCancelledEmail(order.user?.email, {
+      orderNumber: formatOrderNumber(order.orderSerial),
+      amount: order.amount,
+      refunded: isRefundableRejection,
+    });
+  }
 
   revalidatePath("/admin/orders");
   revalidatePath("/dashboard");
@@ -233,7 +253,7 @@ export async function updateWalletTransactionAction(formData: FormData) {
   const txId = String(formData.get("transactionId"));
   const status = String(formData.get("status")) as "APPROVED" | "REJECTED";
 
-  await prisma.$transaction(async (tx) => {
+  const { approvedDeposit } = await prisma.$transaction(async (tx) => {
     // Atomically claim the review: only succeeds while the request is still PENDING,
     // so two concurrent approve clicks can't both pass and double-credit the wallet.
     const claimed = await tx.walletTransaction.updateMany({
@@ -248,14 +268,26 @@ export async function updateWalletTransactionAction(formData: FormData) {
       throw new Error("এই রিকোয়েস্টটি ইতিমধ্যে রিভিউ করা হয়েছে।");
     }
 
-    const walletTx = await tx.walletTransaction.findUniqueOrThrow({ where: { id: txId } });
-    if (status === "APPROVED" && walletTx.type === "DEPOSIT") {
+    const walletTx = await tx.walletTransaction.findUniqueOrThrow({
+      where: { id: txId },
+      include: { user: true },
+    });
+    const isApprovedDeposit = status === "APPROVED" && walletTx.type === "DEPOSIT";
+    if (isApprovedDeposit) {
       await tx.user.update({
         where: { id: walletTx.userId },
         data: { walletBalance: { increment: walletTx.amount } },
       });
     }
+
+    return { approvedDeposit: isApprovedDeposit ? walletTx : null };
   });
+
+  // Best-effort, outside the transaction — see the same pattern in
+  // updateOrderStatusAction above.
+  if (approvedDeposit) {
+    await sendWalletTopupEmail(approvedDeposit.user.email, { amount: approvedDeposit.amount });
+  }
 
   revalidatePath("/admin/wallet-requests");
   revalidatePath("/dashboard");
@@ -397,6 +429,56 @@ export async function updateRechargeOptionStockAction(formData: FormData) {
     where: { id: optionId },
     data: { stock },
   });
+
+  revalidatePath(`/admin/products/${productId}/edit`);
+  revalidatePath("/");
+}
+
+export async function updateRechargeOptionPriceAction(formData: FormData) {
+  await requireAdmin();
+  const optionId = Number(formData.get("optionId"));
+  const productId = formData.get("productId");
+  const price = Number(formData.get("price"));
+
+  if (!Number.isFinite(optionId) || !Number.isFinite(price) || price < 0) return;
+
+  await prisma.rechargeOption.update({
+    where: { id: optionId },
+    data: { price },
+  });
+
+  revalidatePath(`/admin/products/${productId}/edit`);
+  revalidatePath("/");
+}
+
+// Swaps the option with its previous/next sibling (ordered by sortOrder,
+// then id as a tiebreak for pre-existing rows that share sortOrder 0) and
+// re-numbers the whole list 0..n-1. Re-numbering everyone rather than just
+// the two swapped rows also normalizes any leftover ties/gaps, so ordering
+// stays well-defined for every future move.
+export async function moveRechargeOptionAction(formData: FormData) {
+  await requireAdmin();
+  const optionId = Number(formData.get("optionId"));
+  const productId = Number(formData.get("productId"));
+  const direction = String(formData.get("direction") || "");
+  if (!Number.isFinite(optionId) || !Number.isFinite(productId)) return;
+  if (direction !== "up" && direction !== "down") return;
+
+  const options = await prisma.rechargeOption.findMany({
+    where: { productId },
+    orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+  });
+
+  const index = options.findIndex((option) => option.id === optionId);
+  const swapWith = direction === "up" ? index - 1 : index + 1;
+  if (index === -1 || swapWith < 0 || swapWith >= options.length) return;
+
+  const reordered = [...options];
+  [reordered[index], reordered[swapWith]] = [reordered[swapWith], reordered[index]];
+
+  await prisma.$transaction(
+    reordered.map((option, i) => prisma.rechargeOption.update({ where: { id: option.id }, data: { sortOrder: i } }))
+  );
 
   revalidatePath(`/admin/products/${productId}/edit`);
   revalidatePath("/");
@@ -882,6 +964,11 @@ export async function updateSiteSettingsAction(
     nagadNumber: formData.get("nagadNumber"),
     rocketNumber: formData.get("rocketNumber"),
     referralBonusPercent: formData.get("referralBonusPercent"),
+    smtpHost: formData.get("smtpHost") || "",
+    smtpPort: formData.get("smtpPort") || "",
+    smtpUser: formData.get("smtpUser") || "",
+    smtpFromEmail: formData.get("smtpFromEmail") || "",
+    smtpFromName: formData.get("smtpFromName") || "",
   });
 
   if (!parsed.success) {
@@ -933,6 +1020,8 @@ export async function updateSiteSettingsAction(
     }
   }
 
+  const smtpPassword = String(formData.get("smtpPassword") || "").trim();
+
   const data = {
     ...parsed.data,
     metaTitle: parsed.data.metaTitle || null,
@@ -941,6 +1030,16 @@ export async function updateSiteSettingsAction(
     telegramLink: parsed.data.telegramLink || "",
     facebookLink: parsed.data.facebookLink || null,
     allowGuestOrders: formData.get("allowGuestOrders") === "on",
+    smtpEnabled: formData.get("smtpEnabled") === "on",
+    smtpSecure: formData.get("smtpSecure") === "on",
+    smtpHost: parsed.data.smtpHost || null,
+    smtpPort: parsed.data.smtpPort ?? 587,
+    smtpUser: parsed.data.smtpUser || null,
+    smtpFromEmail: parsed.data.smtpFromEmail || null,
+    smtpFromName: parsed.data.smtpFromName || null,
+    // Leave the stored password untouched unless the admin typed a new one —
+    // the form never prefills this field, so an empty submit means "keep it".
+    ...(smtpPassword ? { smtpPassword } : {}),
     ...(ogImage ? { ogImage } : {}),
     ...(favicon ? { favicon } : {}),
     ...iconUploads,

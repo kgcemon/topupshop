@@ -27,6 +27,14 @@ export async function getSiteSettings() {
       walletIcon: null,
       allowGuestOrders: false,
       marketEnabled: true,
+      smtpEnabled: false,
+      smtpHost: null,
+      smtpPort: 587,
+      smtpSecure: false,
+      smtpUser: null,
+      smtpPassword: null,
+      smtpFromEmail: null,
+      smtpFromName: null,
     }
   );
 }

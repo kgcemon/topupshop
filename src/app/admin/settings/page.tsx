@@ -29,6 +29,13 @@ export default async function AdminSettingsPage() {
           walletIcon: settings.walletIcon,
           referralBonusPercent: settings.referralBonusPercent,
           allowGuestOrders: settings.allowGuestOrders,
+          smtpEnabled: settings.smtpEnabled,
+          smtpHost: settings.smtpHost,
+          smtpPort: settings.smtpPort,
+          smtpSecure: settings.smtpSecure,
+          smtpUser: settings.smtpUser,
+          smtpFromEmail: settings.smtpFromEmail,
+          smtpFromName: settings.smtpFromName,
         }}
       />
     </div>

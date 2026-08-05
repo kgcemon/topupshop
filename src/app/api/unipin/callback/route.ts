@@ -4,6 +4,7 @@ import { logApiCall } from "@/lib/api-log";
 import { createNotification, notifyAdmins } from "@/lib/notifications";
 import { grantFirstOrderReferralBonus } from "@/lib/referral";
 import { formatOrderNumber } from "@/lib/utils";
+import { sendOrderDeliveredEmail } from "@/lib/mailer";
 
 // Receives UniPin's async redeem-status callback — the `url` we send as part
 // of every redeem request in unipin-client.ts. Some UniPin deployments also
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "missing orderid" }, { status: 400 });
   }
 
-  const order = await prisma.order.findUnique({ where: { orderSerial } });
+  const order = await prisma.order.findUnique({ where: { orderSerial }, include: { user: true } });
   if (!order) {
     return NextResponse.json({ error: "order not found" }, { status: 404 });
   }
@@ -106,6 +107,12 @@ export async function POST(request: Request) {
               link: "/dashboard/orders",
             });
           }
+        });
+
+        // Best-effort, outside the transaction — see sendOrderDeliveredEmail.
+        await sendOrderDeliveredEmail(order.user?.email, {
+          orderNumber: formatOrderNumber(order.orderSerial),
+          amount: order.amount,
         });
       }
     }

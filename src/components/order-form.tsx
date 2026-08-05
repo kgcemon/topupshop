@@ -167,27 +167,36 @@ export function OrderForm({
               <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-3">
                 {options.map((option) => {
                   const outOfStock = option.stock !== null && option.stock <= 0;
+                  const isSelected = option.id === selectedOptionId;
                   return (
                     <label
                       key={option.id}
-                      className={`flex min-h-[50px] items-center justify-between gap-1.5 rounded-lg border-2 p-2 text-[11px] font-semibold transition-colors sm:min-h-[56px] sm:gap-2 sm:p-3 sm:text-xs ${
+                      className={`flex min-h-[50px] items-center justify-between gap-1.5 rounded-lg border-2 p-2 text-xs font-semibold transition-colors sm:min-h-[56px] sm:gap-2 sm:p-3 sm:text-sm ${
                         outOfStock
                           ? "cursor-not-allowed border-gray-200 bg-gray-50 opacity-60"
-                          : "cursor-pointer " +
-                            (option.id === selectedOptionId
-                              ? "border-primary-500 bg-primary-50"
-                              : "border-gray-200")
+                          : "cursor-pointer " + (isSelected ? "border-primary-500 bg-primary-50" : "border-gray-200")
                       }`}
                     >
                       <span className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
                         <input
                           type="radio"
                           name="recharge-display"
-                          className="shrink-0 accent-[#14D72B]"
-                          checked={option.id === selectedOptionId}
+                          className="sr-only"
+                          checked={isSelected}
                           disabled={outOfStock}
                           onChange={() => setSelectedOptionId(option.id)}
                         />
+                        <span
+                          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full sm:h-5 sm:w-5 ${
+                            isSelected && !outOfStock ? "bg-primary-500 text-white" : "bg-gray-300"
+                          }`}
+                        >
+                          {isSelected && !outOfStock && (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-2.5 w-2.5 sm:h-3 sm:w-3">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M20 6 9 17l-5-5" />
+                            </svg>
+                          )}
+                        </span>
                         <span className="line-clamp-2 leading-tight">{option.label}</span>
                       </span>
                       <span className="shrink-0 whitespace-nowrap font-bold text-primary-600">

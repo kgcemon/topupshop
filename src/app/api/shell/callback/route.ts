@@ -4,6 +4,7 @@ import { logApiCall } from "@/lib/api-log";
 import { createNotification, notifyAdmins } from "@/lib/notifications";
 import { grantFirstOrderReferralBonus } from "@/lib/referral";
 import { formatOrderNumber } from "@/lib/utils";
+import { sendOrderDeliveredEmail } from "@/lib/mailer";
 
 // Mirrors src/app/api/unipin/callback/route.ts — same vendor/payload shape
 // (status/content/orderid, same tgbotid), just for SHELL orders (see
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "missing orderid" }, { status: 400 });
   }
 
-  const order = await prisma.order.findUnique({ where: { orderSerial } });
+  const order = await prisma.order.findUnique({ where: { orderSerial }, include: { user: true } });
   if (!order) {
     return NextResponse.json({ error: "order not found" }, { status: 404 });
   }
@@ -80,6 +81,12 @@ export async function POST(request: Request) {
             link: "/dashboard/orders",
           });
         }
+      });
+
+      // Best-effort, outside the transaction — see sendOrderDeliveredEmail.
+      await sendOrderDeliveredEmail(order.user?.email, {
+        orderNumber: formatOrderNumber(order.orderSerial),
+        amount: order.amount,
       });
     }
   } else {

@@ -6,8 +6,10 @@ import {
   addRechargeOptionAction,
   deleteRechargeOptionAction,
   updateRechargeOptionStockAction,
+  updateRechargeOptionPriceAction,
   updateRechargeOptionDenomAction,
   updateRechargeOptionDeliveryMethodAction,
+  moveRechargeOptionAction,
 } from "@/lib/actions/admin-actions";
 import { formatTaka } from "@/lib/utils";
 import { getAllSections } from "@/lib/data";
@@ -59,12 +61,42 @@ export default async function EditProductPage({
       <div className="rounded-xl border border-gray-200 bg-white p-6">
         <h2 className="mb-4 text-lg font-bold">Recharge Options</h2>
         <div className="mb-4 space-y-2">
-          {product.rechargeOptions.map((option) => {
+          {product.rechargeOptions.map((option, index) => {
             const outOfStock = option.stock !== null && option.stock <= 0;
+            const isFirst = index === 0;
+            const isLast = index === product.rechargeOptions.length - 1;
             return (
               <div key={option.id} className="space-y-2 rounded-lg border border-gray-200 p-3 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="font-semibold">{option.label}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-0.5">
+                      <form action={moveRechargeOptionAction}>
+                        <input type="hidden" name="optionId" value={option.id} />
+                        <input type="hidden" name="productId" value={product.id} />
+                        <input type="hidden" name="direction" value="up" />
+                        <button
+                          disabled={isFirst}
+                          title="উপরে সরান"
+                          className="flex h-5 w-5 items-center justify-center rounded border border-gray-300 text-xs leading-none hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30"
+                        >
+                          ▲
+                        </button>
+                      </form>
+                      <form action={moveRechargeOptionAction}>
+                        <input type="hidden" name="optionId" value={option.id} />
+                        <input type="hidden" name="productId" value={product.id} />
+                        <input type="hidden" name="direction" value="down" />
+                        <button
+                          disabled={isLast}
+                          title="নিচে সরান"
+                          className="flex h-5 w-5 items-center justify-center rounded border border-gray-300 text-xs leading-none hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30"
+                        >
+                          ▼
+                        </button>
+                      </form>
+                    </div>
+                    <span className="font-semibold">{option.label}</span>
+                  </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-bold">{formatTaka(option.price)} TK</span>
                     <span
@@ -113,6 +145,21 @@ export default async function EditProductPage({
                     </select>
                     <button className="rounded-md border border-gray-300 px-2 py-1 text-xs font-bold hover:bg-gray-50">
                       Update Method
+                    </button>
+                  </form>
+                  <form action={updateRechargeOptionPriceAction} className="flex items-center gap-1">
+                    <input type="hidden" name="optionId" value={option.id} />
+                    <input type="hidden" name="productId" value={product.id} />
+                    <input
+                      name="price"
+                      type="number"
+                      min={0}
+                      required
+                      defaultValue={option.price}
+                      className="w-24 rounded-md border border-gray-300 px-2 py-1 text-xs"
+                    />
+                    <button className="rounded-md border border-gray-300 px-2 py-1 text-xs font-bold hover:bg-gray-50">
+                      Update Price
                     </button>
                   </form>
                   <form action={updateRechargeOptionStockAction} className="flex items-center gap-1">

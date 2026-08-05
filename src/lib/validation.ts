@@ -162,4 +162,12 @@ export const siteSettingsSchema = z.object({
     .number()
     .min(1, "সর্বনিম্ন ১%")
     .max(1.5, "সর্বোচ্চ ১.৫%"),
+  smtpHost: z.string().trim().max(255).optional().or(z.literal("")),
+  smtpPort: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : v),
+    z.coerce.number().int().min(1).max(65535).optional()
+  ),
+  smtpUser: z.string().trim().max(255).optional().or(z.literal("")),
+  smtpFromEmail: z.string().trim().email("সঠিক ইমেইল দিন").optional().or(z.literal("")),
+  smtpFromName: z.string().trim().max(255).optional().or(z.literal("")),
 });
