@@ -196,6 +196,18 @@ export async function updateOrderStatusAction(formData: FormData) {
           link: "/dashboard/orders",
         });
       }
+
+      if (enteringCancelledOrRejected) {
+        await createNotification(tx, {
+          userId: order.userId,
+          actorId: session.user.id,
+          type: "ORDER_NOTE",
+          message: isRefundableRejection
+            ? `আপনার অর্ডার ${formatOrderNumber(order.orderSerial)} বাতিল করা হয়েছে। ৳${order.amount} আপনার ওয়ালেটে ফেরত দেওয়া হয়েছে।`
+            : `আপনার অর্ডার ${formatOrderNumber(order.orderSerial)} বাতিল করা হয়েছে।`,
+          link: "/dashboard/orders",
+        });
+      }
     }
 
     return { isRefundableRejection };

@@ -192,6 +192,7 @@ export async function placeOrderAction(
       let autoApproved = false;
       let mismatchNote: string | null = null;
       let overpayExcess: number | null = null;
+      let shortfallDeducted: number | null = null;
 
       if (paymentMethod !== "WALLET" && transactionId) {
         const smsRow = await findUnusedPaymentSms(tx, { method: paymentMethod, trxId: transactionId });
@@ -229,6 +230,43 @@ export async function placeOrderAction(
           } else if (smsAmount > option.price) {
             // Overpaid guest order — no wallet to credit into, so leave it for manual handling.
             mismatchNote = `⚠️ গেস্ট অর্ডারে বাড়তি টাকা পাঠানো হয়েছে (SMS: ৳${smsAmount}, অর্ডার: ৳${option.price})। গেস্ট একাউন্টে ওয়ালেট নেই বলে যোগ করা যায়নি, ম্যানুয়ালি সমাধান করুন। SMS ব্যবহার করা হয়নি।`;
+          } else if (userId) {
+            // Underpaid order from a registered user — cover the shortfall from
+            // their wallet and auto-approve, mirroring the overpay branch above.
+            // Only claim the SMS (and touch the wallet) once we know the wallet
+            // can actually cover the rest; otherwise leave everything untouched
+            // and fall back to manual review, same as the guest case.
+            const shortfall = option.price - smsAmount;
+            const buyer = await tx.user.findUniqueOrThrow({ where: { id: userId } });
+
+            if (buyer.walletBalance >= shortfall) {
+              if (await claimPaymentSmsById(tx, smsRow.id)) {
+                matchedSmsId = smsRow.id;
+                autoApproved = true;
+                shortfallDeducted = shortfall;
+                mismatchNote = `গ্রাহক SMS অনুযায়ী ৳${smsAmount} পাঠিয়েছেন, অর্ডারের মূল্য ৳${option.price}। বাকি ৳${shortfall} তার ওয়ালেট থেকে কেটে অর্ডার অনুমোদন করা হয়েছে। (TrxID: ${transactionId})`;
+
+                await tx.user.update({
+                  where: { id: userId },
+                  data: { walletBalance: { decrement: shortfall } },
+                });
+                await tx.walletTransaction.create({
+                  data: {
+                    userId,
+                    type: "PURCHASE",
+                    method: "WALLET",
+                    amount: shortfall,
+                    status: "APPROVED",
+                    reviewedAt: new Date(),
+                    note: `TrxID ${transactionId}: অর্ডার ${option.label} - SMS এ পাঠানো ৳${smsAmount}, বাকি ৳${shortfall} ওয়ালেট থেকে কাটা হলো।`,
+                  },
+                });
+              } else {
+                mismatchNote = `⚠️ পেমেন্ট কম হয়েছে: গ্রাহক TrxID ${transactionId} দিয়ে মাত্র ৳${smsAmount} পাঠিয়েছেন, কিন্তু অর্ডারের মূল্য ৳${option.price}। SMS দাবি করা যায়নি, ম্যানুয়ালি পর্যালোচনা করুন।`;
+              }
+            } else {
+              mismatchNote = `⚠️ পেমেন্ট কম হয়েছে: গ্রাহক TrxID ${transactionId} দিয়ে মাত্র ৳${smsAmount} পাঠিয়েছেন (অর্ডার মূল্য ৳${option.price})। বাকি ৳${shortfall} মেটানোর মতো ওয়ালেট ব্যালেন্স (৳${buyer.walletBalance}) নেই, তাই অর্ডারটি পেন্ডিং রাখা হলো। SMS ব্যবহার করা হয়নি, ম্যানুয়ালি পর্যালোচনা করুন।`;
+            }
           } else {
             mismatchNote = `⚠️ পেমেন্ট কম হয়েছে: গ্রাহক TrxID ${transactionId} দিয়ে মাত্র ৳${smsAmount} পাঠিয়েছেন, কিন্তু অর্ডারের মূল্য ৳${option.price}। SMS ব্যবহার করা হয়নি, ম্যানুয়ালি পর্যালোচনা করুন।`;
           }
@@ -269,6 +307,21 @@ export async function placeOrderAction(
           userId: userId!,
           type: "ORDER_NOTE",
           message: `আপনার অর্ডার ${formatOrderNumber(order.orderSerial)} এর জন্য আপনি ৳${overpayExcess} বেশি পাঠিয়েছিলেন। বাড়তি টাকা আপনার ওয়ালেটে যোগ করা হয়েছে।`,
+          link: "/dashboard",
+        });
+      }
+
+      if (shortfallDeducted !== null) {
+        await notifyAdmins(tx, {
+          type: "ORDER_PAYMENT_MISMATCH",
+          message: `💰 অর্ডার ${formatOrderNumber(order.orderSerial)}: গ্রাহক ৳${shortfallDeducted} কম পাঠিয়েছিলেন, বাকি টাকা তার ওয়ালেট থেকে কেটে অর্ডার অনুমোদন করা হয়েছে।`,
+          link: `/admin/orders?status=ALL&q=${order.orderSerial}`,
+        });
+        // userId is guaranteed set here — this branch only runs for registered buyers (see condition above).
+        await createNotification(tx, {
+          userId: userId!,
+          type: "ORDER_NOTE",
+          message: `আপনার অর্ডার ${formatOrderNumber(order.orderSerial)} এর জন্য আপনি ৳${shortfallDeducted} কম পাঠিয়েছিলেন। বাকি টাকা আপনার ওয়ালেট থেকে কেটে অর্ডারটি অনুমোদন করা হয়েছে।`,
           link: "/dashboard",
         });
       }
