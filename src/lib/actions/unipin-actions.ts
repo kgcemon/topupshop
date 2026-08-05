@@ -95,3 +95,21 @@ export async function deleteUnipinCodeAction(formData: FormData) {
 
   revalidatePath("/admin/unipin");
 }
+
+// Manually frees a USED code back into the pool from the admin search UI —
+// same state reset as the automatic release on order reject/cancel
+// (src/lib/actions/admin-actions.ts, updateOrderStatusAction), just triggered
+// by hand for cases like a code claimed in error or an order fixed outside
+// the normal status flow.
+export async function releaseUnipinCodeAction(formData: FormData) {
+  await requireAdmin();
+  const codeId = String(formData.get("codeId") || "");
+  if (!codeId) return;
+
+  await prisma.unipinCode.updateMany({
+    where: { id: codeId, status: "USED" },
+    data: { status: "UNUSED", usedAt: null, usedForOrderId: null, redeemedAt: null },
+  });
+
+  revalidatePath("/admin/unipin");
+}

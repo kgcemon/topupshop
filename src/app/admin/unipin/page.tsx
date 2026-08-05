@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getDhakaDayRange, formatOrderNumber, formatDhakaDateTime } from "@/lib/utils";
 import { CopyButton } from "@/components/copy-button";
 import { addUnipinCodesAction, deleteUnipinCodeAction } from "@/lib/actions/unipin-actions";
+import { ReleaseUnipinCodeButton } from "@/components/release-unipin-code-button";
 
 export default async function AdminUnipinPage({
   searchParams,
@@ -206,6 +207,13 @@ export default async function AdminUnipinPage({
                           <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
                             API Redeemed
                           </span>
+                        )}
+                        {match.status === "USED" && (
+                          <ReleaseUnipinCodeButton
+                            codeId={match.id}
+                            code={match.code}
+                            redeemed={Boolean(match.redeemedAt)}
+                          />
                         )}
                       </div>
                     </div>
