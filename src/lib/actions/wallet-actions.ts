@@ -7,6 +7,11 @@ import { Prisma } from "@/generated/prisma/client";
 import { depositSchema } from "@/lib/validation";
 import type { ActionState } from "@/lib/actions/auth-actions";
 import { claimMatchingPaymentSms } from "@/lib/payment-sms-match";
+import {
+  checkTransactionIdAvailable,
+  claimTransactionId,
+  TRANSACTION_ID_IN_USE_MESSAGE,
+} from "@/lib/transaction-id";
 
 export async function depositAction(
   _prevState: ActionState,
@@ -34,21 +39,22 @@ export async function depositAction(
 
   const { amount, method, transactionId } = parsed.data;
 
-  // A trx id must only ever back one deposit request, approved or not —
-  // otherwise the same real payment can be resubmitted to farm multiple
-  // wallet credits (or get accidentally double-approved by an admin).
-  const existingUse = await prisma.walletTransaction.findFirst({ where: { transactionId } });
-  if (existingUse) {
-    return { fieldErrors: { transactionId: "এই ট্রানজেকশন আইডি ইতিমধ্যে ব্যবহার করা হয়েছে" } };
+  // A trx id must only ever back one thing site-wide — one deposit request
+  // (approved or not) and never an order as well — otherwise the same real
+  // payment can be resubmitted to farm multiple wallet credits, or spent once
+  // here and once at checkout. See src/lib/transaction-id.ts.
+  const availability = await checkTransactionIdAvailable(prisma, transactionId);
+  if (!availability.available) {
+    return { fieldErrors: { transactionId: availability.message } };
   }
 
   try {
     await prisma.$transaction(async (tx) => {
       // Re-check for a race (two submissions of the same trx id landing at
       // nearly the same time) now that we're inside the transaction.
-      const raceCheck = await tx.walletTransaction.findFirst({ where: { transactionId } });
-      if (raceCheck) {
-        throw new DepositError("এই ট্রানজেকশন আইডি ইতিমধ্যে ব্যবহার করা হয়েছে");
+      const raceCheck = await checkTransactionIdAvailable(tx, transactionId);
+      if (!raceCheck.available) {
+        throw new DepositError(raceCheck.message);
       }
 
       // Match on trx id + method only (not amount) — the customer's typed
@@ -74,6 +80,9 @@ export async function depositAction(
         },
       });
 
+      // Burn the trx id site-wide — see the same call in placeOrderAction.
+      await claimTransactionId(tx, { trxId: transactionId, method, walletTransactionId: walletTx.id });
+
       if (matched) {
         await tx.paymentSms.update({
           where: { id: matched.id },
@@ -92,7 +101,7 @@ export async function depositAction(
     // Backstop for the DB-level unique constraint on transactionId, in case
     // two submissions of the same trx id land inside the race window above.
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return { fieldErrors: { transactionId: "এই ট্রানজেকশন আইডি ইতিমধ্যে ব্যবহার করা হয়েছে" } };
+      return { fieldErrors: { transactionId: TRANSACTION_ID_IN_USE_MESSAGE } };
     }
     throw error;
   }

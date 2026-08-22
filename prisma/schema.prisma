@@ -240,6 +240,7 @@ model Order {
   apiCallLogs         ApiCallLog[]
   fulfillmentJob      FulfillmentJob?
   usedPaymentSms      PaymentSms?
+  transactionIdUse    TransactionIdUse?
 
   @@index([userId])
   @@index([status])
@@ -321,6 +322,11 @@ enum PaymentSmsStatus {
 // method's payment-notification format get a row here — everything else is
 // acknowledged but not stored. `trxId` is unique so re-delivered/duplicate
 // SMS from the forwarder app never create a second row.
+//
+// Matching runs in both directions: an SMS already stored when the customer
+// submits is claimed at checkout/deposit time (payment-sms-match.ts), and an
+// SMS that arrives afterwards settles whatever PENDING request was waiting
+// for it (payment-sms-settle.ts).
 model PaymentSms {
   id                         Int              @id @default(autoincrement())
   method                     PaymentMethod
@@ -343,6 +349,31 @@ model PaymentSms {
 
   @@index([method])
   @@index([status])
+}
+
+// One row per gateway transaction id that has been consumed anywhere on the
+// site — an order OR a wallet deposit, never both. Order.transactionId and
+// WalletTransaction.transactionId are each unique on their own, but MySQL has
+// no cross-table unique constraint, so without this table the same real
+// bKash/Nagad/Rocket trx id could back a wallet top-up AND an order (one of
+// them getting approved by hand once the SMS was already spent). Every
+// checkout/deposit inserts its claim here inside the same transaction that
+// creates the order/deposit, so the unique index on `trxId` is what actually
+// enforces "one trx id, one use" — the application-level pre-checks just turn
+// that into a friendly message instead of a P2002.
+//
+// Cascading deletes keep it honest in the other direction: deleting an order
+// or a wallet request releases its trx id for legitimate re-entry.
+model TransactionIdUse {
+  id                  Int           @id @default(autoincrement())
+  trxId               String        @unique
+  method              PaymentMethod
+  orderId             String?       @unique
+  walletTransactionId String?       @unique
+  createdAt           DateTime      @default(now())
+
+  order             Order?             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  walletTransaction WalletTransaction? @relation(fields: [walletTransactionId], references: [id], onDelete: Cascade)
 }
 
 // Raw request/response trail for every external API call made while fulfilling
@@ -437,7 +468,8 @@ model WalletTransaction {
 
   user       User  @relation(fields: [userId], references: [id])
   reviewedBy User? @relation("ReviewedBy", fields: [reviewedById], references: [id])
-  usedPaymentSms PaymentSms?
+  usedPaymentSms   PaymentSms?
+  transactionIdUse TransactionIdUse?
 
   @@index([userId])
   @@index([status])
@@ -554,7 +586,7 @@ enum NotificationType {
   ORDER_NOTE
   ADMIN_ANNOUNCEMENT
   ORDER_FULFILLMENT_ISSUE // admin-only: an order's delivery API failed or had insufficient stock/config
-  ORDER_PAYMENT_MISMATCH // admin-only: a matched payment SMS amount didn't equal the order price (over/under-payment)
+  ORDER_PAYMENT_MISMATCH // admin-only: a payment SMS's method/amount didn't line up with the order or wallet request holding that trx id (over/under-payment, wrong method)
   PAYMENT_SMS_BALANCE_MISMATCH // admin-only: a forwarded payment SMS's reported balance didn't match checkpoint + amount
 }
 

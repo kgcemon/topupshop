@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { settlePendingWithPaymentSms } from "@/lib/payment-sms-settle";
 
 async function requireAdmin() {
   const session = await auth();
@@ -38,6 +39,23 @@ export async function togglePaymentSmsActiveAction(formData: FormData) {
     where: { id },
     data: { isActive: !isActive },
   });
+
+  // Clearing a flagged SMS is the point at which it becomes eligible for
+  // auto-matching, so run the same late-settlement pass the ingest route does
+  // — otherwise an admin who unblocks an SMS still has to approve the order
+  // it pays for by hand.
+  if (!isActive) {
+    const settled = await settlePendingWithPaymentSms(id);
+    if (settled.settled === "order") {
+      revalidatePath("/admin/orders");
+      revalidatePath("/dashboard/orders");
+    } else if (settled.settled === "wallet") {
+      revalidatePath("/admin/wallet-requests");
+      revalidatePath("/dashboard");
+      revalidatePath("/dashboard/deposit");
+    }
+  }
+
   revalidatePath("/admin/store-sms");
 }
 

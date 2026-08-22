@@ -11,6 +11,11 @@ import { isIpBlocked, applyAbuseBlock, detectMaliciousInput } from "@/lib/securi
 import type { ActionState } from "@/lib/actions/auth-actions";
 import { processOrderFulfillment } from "@/lib/order-fulfillment";
 import { findUnusedPaymentSms, claimPaymentSmsById } from "@/lib/payment-sms-match";
+import {
+  checkTransactionIdAvailable,
+  claimTransactionId,
+  TRANSACTION_ID_IN_USE_MESSAGE,
+} from "@/lib/transaction-id";
 import { notifyAdmins, createNotification } from "@/lib/notifications";
 
 export type OrderActionState = ActionState & {
@@ -128,10 +133,14 @@ export async function placeOrderAction(
     return { fieldErrors: { transactionId: "ট্রানজেকশন আইডি দিন" } };
   }
 
+  // A gateway trx id is spendable exactly once across the whole site — an
+  // order OR a wallet deposit, never both (see src/lib/transaction-id.ts).
+  // This is the friendly early exit; the authoritative check is the
+  // claimTransactionId() insert inside the transaction below.
   if (transactionId) {
-    const existingOrder = await prisma.order.findUnique({ where: { transactionId } });
-    if (existingOrder) {
-      return { fieldErrors: { transactionId: "এই ট্রানজেকশন আইডি ইতিমধ্যে ব্যবহার করা হয়েছে" } };
+    const availability = await checkTransactionIdAvailable(prisma, transactionId);
+    if (!availability.available) {
+      return { fieldErrors: { transactionId: availability.message } };
     }
   }
 
@@ -150,6 +159,16 @@ export async function placeOrderAction(
       });
       if (stockReserved.count === 0) {
         throw new OrderError("এই রিচার্জ অপশনটি বর্তমানে Stock Out।");
+      }
+
+      // Re-check inside the transaction, before any SMS is claimed or money
+      // moves, so a second submission that slipped past the pre-check above
+      // aborts here instead of half-consuming a payment.
+      if (transactionId) {
+        const availability = await checkTransactionIdAvailable(tx, transactionId);
+        if (!availability.available) {
+          throw new OrderError(availability.message);
+        }
       }
 
       if (paymentMethod === "WALLET") {
@@ -292,6 +311,14 @@ export async function placeOrderAction(
         },
       });
 
+      // Burn the trx id site-wide. Unique index on TransactionIdUse.trxId —
+      // a concurrent order/deposit racing for the same id loses here with
+      // P2002 and its whole transaction (SMS claim, wallet moves, the order
+      // row) rolls back.
+      if (paymentMethod !== "WALLET" && transactionId) {
+        await claimTransactionId(tx, { trxId: transactionId, method: paymentMethod, orderId: order.id });
+      }
+
       if (matchedSmsId !== null) {
         await tx.paymentSms.update({ where: { id: matchedSmsId }, data: { usedForOrderId: order.id } });
       }
@@ -333,7 +360,7 @@ export async function placeOrderAction(
       return { error: error.message };
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return { fieldErrors: { transactionId: "এই ট্রানজেকশন আইডি ইতিমধ্যে ব্যবহার করা হয়েছে" } };
+      return { fieldErrors: { transactionId: TRANSACTION_ID_IN_USE_MESSAGE } };
     }
     throw error;
   }

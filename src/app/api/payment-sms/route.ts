@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { settlePendingWithPaymentSms } from "@/lib/payment-sms-settle";
 import { parsePaymentSms } from "@/lib/payment-sms-parser";
 import { notifyAdmins } from "@/lib/notifications";
 import type { PaymentMethod } from "@/generated/prisma/enums";
@@ -131,7 +133,7 @@ export async function POST(request: Request) {
     }
   }
 
-  await prisma.$transaction(async (tx) => {
+  const storedSms = await prisma.$transaction(async (tx) => {
     const created = await tx.paymentSms.create({
       data: {
         method: allowedSender.method,
@@ -154,7 +156,26 @@ export async function POST(request: Request) {
         link: "/admin/store-sms",
       });
     }
+
+    return created;
   });
+
+  // The SMS may be arriving *after* the customer already submitted the order
+  // or deposit it pays for — that request is sitting PENDING with nothing to
+  // match it against. Settle it now, on an exact method+amount+trxId match
+  // only (see payment-sms-settle.ts). A flagged SMS (isActive false) is never
+  // auto-settled; it waits for an admin to clear it on /admin/store-sms.
+  const settled = isActive ? await settlePendingWithPaymentSms(storedSms.id) : { settled: "none" as const };
+
+  revalidatePath("/admin/store-sms");
+  if (settled.settled === "order") {
+    revalidatePath("/admin/orders");
+    revalidatePath("/dashboard/orders");
+  } else if (settled.settled === "wallet") {
+    revalidatePath("/admin/wallet-requests");
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/deposit");
+  }
 
   return respond(true, "Payment SMS processed and stored successfully");
 }
