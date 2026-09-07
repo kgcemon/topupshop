@@ -17,7 +17,10 @@ const securityHeaders = [
       "connect-src 'self'",
       "object-src 'none'",
       "base-uri 'self'",
-      "form-action 'self'",
+      // Google sign-in is a form POST that 302s to accounts.google.com, and
+      // browsers apply form-action across the whole redirect chain — without
+      // Google listed here the hand-off is silently blocked.
+      "form-action 'self' https://accounts.google.com",
       "frame-ancestors 'self'",
     ].join("; "),
   },

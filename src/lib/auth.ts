@@ -52,6 +52,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    // Keep post-sign-in navigation on whatever host the visitor is actually
+    // browsing. Returning the relative path lets the browser resolve it against
+    // the current origin, so a stale AUTH_URL/NEXTAUTH_URL left over from an old
+    // domain can't bounce people off the site after login.
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) return url;
+      try {
+        const target = new URL(url);
+        if (target.origin === new URL(baseUrl).origin) return target.pathname + target.search;
+      } catch {
+        // Not a parseable URL — fall through to the safe default.
+      }
+      return "/";
+    },
     async signIn({ user, account, profile }) {
       if (!user?.id) return true;
 
