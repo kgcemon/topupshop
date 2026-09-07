@@ -67,21 +67,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return "/";
     },
     async signIn({ user, account, profile }) {
-      if (!user?.id) return true;
+      // On a first OAuth sign-in `user.id` is the provider's own subject, not a
+      // row id, so look the account up by email as well. Missing that fallback
+      // left `dbUser` null, which both skipped the block check for Google and
+      // sent the avatar update below at a row that doesn't exist — and Auth.js
+      // turns anything thrown in this callback into "AccessDenied".
+      const select = { id: true, isBlocked: true, blockedUntil: true, image: true } as const;
+      const dbUser =
+        (user?.id ? await prisma.user.findUnique({ where: { id: user.id }, select }) : null) ??
+        (user?.email ? await prisma.user.findUnique({ where: { email: user.email }, select }) : null);
 
-      const dbUser = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: { isBlocked: true, blockedUntil: true, image: true },
-      });
+      // Brand-new sign-up — the adapter creates the row, nothing to check yet.
+      if (!dbUser) return true;
 
       // Existing (e.g. credentials-registered) account had no avatar —
       // now that it's linked to Google, adopt the Google profile photo.
-      if (account?.provider === "google" && !dbUser?.image && typeof profile?.picture === "string") {
-        await prisma.user.update({ where: { id: user.id }, data: { image: profile.picture } });
+      // Cosmetic, so a failure here must never deny the sign-in.
+      if (account?.provider === "google" && !dbUser.image && typeof profile?.picture === "string") {
+        try {
+          await prisma.user.update({ where: { id: dbUser.id }, data: { image: profile.picture } });
+        } catch {
+          // Ignored on purpose — they sign in, just without the photo.
+        }
       }
 
       const stillBlocked =
-        dbUser?.isBlocked && (!dbUser.blockedUntil || dbUser.blockedUntil > new Date());
+        dbUser.isBlocked && (!dbUser.blockedUntil || dbUser.blockedUntil > new Date());
       return !stillBlocked;
     },
     async jwt({ token, user, trigger }) {
