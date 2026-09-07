@@ -37,13 +37,13 @@ export default async function HomePage() {
     <div className="p-2">
       {notice && <NoticeBar message={notice.message} />}
 
+      <Carousel slides={banners} />
+
       <SocialLinksRow
         telegramLink={settings.telegramLink}
         facebookLink={settings.facebookLink}
         whatsappNumber={settings.whatsappNumber}
       />
-
-      <Carousel slides={banners} />
 
       <div id="topup">
         {sections.map((section, index) => (

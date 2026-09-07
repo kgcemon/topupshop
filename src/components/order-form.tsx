@@ -167,12 +167,13 @@ export function OrderForm({
                 {options.map((option) => {
                   const outOfStock = option.stock !== null && option.stock <= 0;
                   const isSelected = option.id === selectedOptionId;
-                  // Solid brand teal at rest, pink once picked, muted when unavailable.
+                  // White tile with a hairline border; the brand colour only
+                  // marks the price and the selected state.
                   const tone = outOfStock
-                    ? { box: "cursor-not-allowed border-gray-300 bg-gray-100 opacity-60", label: "text-gray-500", price: "text-gray-400" }
+                    ? { box: "cursor-not-allowed border-[#138f772b] bg-white opacity-60", label: "text-gray-400", price: "text-gray-400" }
                     : isSelected
-                      ? { box: "cursor-pointer border-pink-500 bg-pink-500", label: "text-white", price: "text-white/90" }
-                      : { box: "cursor-pointer border-primary-500 bg-primary-500 hover:bg-primary-600", label: "text-white", price: "text-white/90" };
+                      ? { box: "cursor-pointer border-primary-500 bg-primary-50", label: "text-secondary-900", price: "text-primary-500" }
+                      : { box: "cursor-pointer border-[#138f772b] bg-white hover:border-primary-500", label: "text-secondary-900", price: "text-primary-500" };
                   return (
                     <label
                       key={option.id}
