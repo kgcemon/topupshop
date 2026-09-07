@@ -130,7 +130,7 @@ export function BlogPostForm({
             label="Meta Keywords (কমা দিয়ে আলাদা করুন)"
             name="metaKeywords"
             defaultValue={defaultValues?.metaKeywords ?? ""}
-            placeholder="free fire topup, topupsbd blog"
+            placeholder="free fire topup, topupshop blog"
             error={state.fieldErrors?.metaKeywords}
           />
         </div>

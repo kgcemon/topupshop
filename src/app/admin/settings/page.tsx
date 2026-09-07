@@ -22,6 +22,7 @@ export default async function AdminSettingsPage() {
           metaKeywords: settings.metaKeywords,
           ogImage: settings.ogImage,
           favicon: settings.favicon,
+          logo: settings.logo,
           whatsappNumber: settings.whatsappNumber,
           telegramLink: settings.telegramLink,
           facebookLink: settings.facebookLink,

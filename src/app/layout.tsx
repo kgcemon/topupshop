@@ -23,15 +23,15 @@ const headingFont = Bree_Serif({
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export const viewport: Viewport = {
-  themeColor: "#14d72b",
+  themeColor: "#138f77",
 };
 
 const DEFAULT_DESCRIPTION =
-  "TopUpsBD থেকে সবচেয়ে দ্রুত ও নিরাপদভাবে Free Fire Diamond TopUp করুন। UID Topup, Weekly/Monthly Membership, Level Up Pass — ২৪ ঘন্টা সার্ভিস।";
+  "topupshop.co থেকে সবচেয়ে দ্রুত ও নিরাপদভাবে Free Fire Diamond TopUp করুন। UID Topup, Weekly/Monthly Membership, Level Up Pass — ২৪ ঘন্টা সার্ভিস।";
 const DEFAULT_KEYWORDS = [
   "Free Fire Topup",
   "Free Fire Diamond",
-  "TopUpsBD",
+  "topupshop.co",
   "Free Fire BD Server Topup",
   "Free Fire Membership",
   "Bangladesh Topup Site",

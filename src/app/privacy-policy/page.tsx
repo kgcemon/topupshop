@@ -4,7 +4,7 @@ import { LegalPage } from "@/components/legal-page";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "TopUpsBD আপনার ব্যক্তিগত তথ্য কীভাবে সংগ্রহ, ব্যবহার এবং সুরক্ষিত রাখে তা জানুন।",
+  description: "topupshop.co আপনার ব্যক্তিগত তথ্য কীভাবে সংগ্রহ, ব্যবহার এবং সুরক্ষিত রাখে তা জানুন।",
   alternates: { canonical: "/privacy-policy" },
 };
 

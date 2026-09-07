@@ -1,4 +1,4 @@
-# TopUpsBD — Free Fire Diamond TopUp (Next.js full-stack clone)
+# topupshop — Free Fire Diamond TopUp (Next.js full-stack clone)
 
 A full-stack, database-backed TopUp site built for learning/portfolio purposes.
 Next.js 16 (App Router) + TypeScript + Prisma (MySQL) + Auth.js v5 (NextAuth) + Tailwind CSS v4.
@@ -56,7 +56,7 @@ cp .env.example .env
 
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | MySQL connection string, e.g. `mysql://user:pass@localhost:3306/topupsbd` |
+| `DATABASE_URL` | MySQL connection string, e.g. `mysql://user:pass@localhost:3306/topupshop` |
 | `AUTH_SECRET` | Random 32-byte secret for session encryption — generate with `npx auth secret` |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth credentials (optional; leave blank to disable Google login) |
 | `NEXT_PUBLIC_SITE_URL` | Public base URL, used in metadata/sitemap |

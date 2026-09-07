@@ -7,7 +7,7 @@ export async function MobileBottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-2px_10px_rgba(0,0,0,0.06)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 flex items-stretch border-t border-hairline bg-white py-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-2px_10px_rgba(0,0,0,0.06)] md:hidden"
       aria-label="Mobile navigation"
     >
       <NavLink href="/" label="Home">

@@ -7,7 +7,7 @@ const prisma = new PrismaClient({ adapter });
 
 const RULES_COMMON = [
   "শুধুমাত্র Bangladesh সার্ভারের ID Code দিয়ে টপ আপ হবে।",
-  "Player ID Code ভুল দিয়ে Diamond না পেলে TopUpsBD কর্তৃপক্ষ দায়ী নয়।",
+  "Player ID Code ভুল দিয়ে Diamond না পেলে topupshop কর্তৃপক্ষ দায়ী নয়।",
   "অর্ডার Cancel হলে কি কারণে তা Cancel হয়েছে, তা অর্ডার হিস্টোরিতে দেওয়া থাকে, অনুগ্রহ পূর্বক দেখে পুনরায় সঠিক তথ্য দিয়ে অর্ডার করবেন।",
   "যেকোনো সমস্যায় আমাদের WhatsApp এ মেসেজ দিন 01343053411",
   "বিঃদ্রঃ মা-বাবা বা ফ্যামিলির কারো ফোন থেকে টাকা চুরি করে টপআপ করলে তার বিরুদ্ধে আইনগত ব্যাবস্থা নেয়া হবে।",
@@ -21,11 +21,11 @@ async function main() {
     update: {},
     create: {
       id: 1,
-      siteName: "TopUpsBD",
+      siteName: "topupshop.co",
       tagline: "Largest TopUp Site In Bangladesh",
       whatsappNumber: "01343053411",
       telegramLink: "https://t.me/+K3PmqW02YCI2OGRl",
-      contactEmail: "support@topupsbd.com",
+      contactEmail: "support@topupshop.co",
     },
   });
 
@@ -33,7 +33,7 @@ async function main() {
   await prisma.notice.create({
     data: {
       message:
-        "TopUpsBD এ ২৪ ঘন্টাই টপআপ চালু থাকে....!!! যেকোনো সমস্যায় আমাদের WhatsApp এ মেসেজ দিন 01343053411 ......... বিঃদ্রঃ মা-বাবা বা ফ্যামিলির কারো ফোন থেকে টাকা চুরি করে টপআপ করলে তার বিরুদ্ধে আইনগত ব্যাবস্থা নেয়া হবে",
+        "topupshop এ ২৪ ঘন্টাই টপআপ চালু থাকে....!!! যেকোনো সমস্যায় আমাদের WhatsApp এ মেসেজ দিন 01343053411 ......... বিঃদ্রঃ মা-বাবা বা ফ্যামিলির কারো ফোন থেকে টাকা চুরি করে টপআপ করলে তার বিরুদ্ধে আইনগত ব্যাবস্থা নেয়া হবে",
       isActive: true,
     },
   });
@@ -184,7 +184,7 @@ async function main() {
 
   console.log("Seeding admin user...");
 
-  const adminEmail = process.env.SEED_ADMIN_EMAIL || "admin@topupsbd.com";
+  const adminEmail = process.env.SEED_ADMIN_EMAIL || "admin@topupshop.co";
   const adminPassword = process.env.SEED_ADMIN_PASSWORD || "ChangeMe123!";
   const hashedPassword = await bcrypt.hash(adminPassword, 12);
 

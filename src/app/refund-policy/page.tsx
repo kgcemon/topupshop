@@ -4,7 +4,7 @@ import { LegalPage } from "@/components/legal-page";
 
 export const metadata: Metadata = {
   title: "Refund Policy",
-  description: "TopUpsBD-এর রিফান্ড ও ক্যান্সেলেশন পলিসি — কখন রিফান্ড পাবেন এবং কীভাবে রিফান্ড প্রসেস করা হয় তা জানুন।",
+  description: "topupshop.co-এর রিফান্ড ও ক্যান্সেলেশন পলিসি — কখন রিফান্ড পাবেন এবং কীভাবে রিফান্ড প্রসেস করা হয় তা জানুন।",
   alternates: { canonical: "/refund-policy" },
 };
 

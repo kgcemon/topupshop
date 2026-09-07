@@ -1,21 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  --background: #edf4ff;
+  /* Composite of the site tint rgba(237, 244, 255, .79) over white. */
+  --background: #f1f6ff;
   --foreground: #171717;
+
+  /* Brand accent — drives buttons, links, the notice bar and every
+     `primary-*` utility across the site. */
+  --site-color: #138f77;
+  --notice-color: var(--site-color);
+  /* Deep navy used for the footer plate. */
+  --secondary-color: #081149;
+  --hairline: #e3e6ed;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  --color-primary-50: #eafff0;
-  --color-primary-100: #d3ffe0;
-  --color-primary-500: #14d72b;
-  --color-primary-600: #10b323;
-  --color-primary-700: #0c8f1c;
+  --color-primary-50: #eff9f6;
+  --color-primary-100: #d6f1e9;
+  --color-primary-200: #b0e3d5;
+  --color-primary-300: #7bcdba;
+  --color-primary-400: #3fae97;
+  --color-primary-500: #138f77;
+  --color-primary-600: #0d7361;
+  --color-primary-700: #0c5c4e;
+  --color-primary-800: #0c4a40;
+  --color-primary-900: #0b3d35;
 
+  /* Heading ink. */
+  --color-secondary-500: #0f3460;
   --color-secondary-900: #0f3460;
+  /* Footer plate. */
+  --color-navy-900: #081149;
+
+  --color-hairline: #e3e6ed;
 
   --font-sans: var(--font-body);
   --font-primary: var(--font-heading);
@@ -28,4 +48,222 @@ body {
 
 html {
   scroll-behavior: smooth;
+}
+
+/* ---- Header -------------------------------------------------------- */
+/* Translucent white plate that blurs the page scrolling beneath it. */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.7);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.site-header::before {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backdrop-filter: blur(8px);
+  z-index: -1;
+}
+
+/* ---- Footer -------------------------------------------------------- */
+.footer-bg {
+  background: var(--secondary-color);
+}
+
+/* ---- Notice bar ---------------------------------------------------- */
+.notice-bar {
+  border-radius: 8px;
+  background: linear-gradient(#fff, #fbfdff);
+  border: 1px solid color-mix(in srgb, var(--notice-color) 5%, #e5e7eb);
+  isolation: isolate;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.notice-bar:hover {
+  box-shadow:
+    0 1px 2px #0f172a0d,
+    0 10px 26px color-mix(in srgb, var(--notice-color) 8%, transparent);
+}
+
+.notice-label {
+  position: relative;
+  background: var(--notice-color);
+}
+
+/* Halo around the live dot, tinted from the brand accent. */
+.notice-dot {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--notice-color) 22%, #fff);
+}
+
+/* Soft bleed from the label into the scrolling text. */
+.notice-label::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -12px;
+  width: 14px;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--notice-color) 22%, transparent),
+    transparent
+  );
+}
+
+@keyframes notice-slide {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+/* Only marquees when the message is wider than its track — see notice-bar.tsx. */
+.notice-slide.is-sliding {
+  animation: notice-slide 18s linear infinite;
+}
+
+.notice-bar:hover .notice-slide.is-sliding {
+  animation-play-state: paused;
+}
+
+/* ---- Product tile -------------------------------------------------- */
+.single-game-product {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* ---- Product page ---------------------------------------------------- */
+/* Mobile-first: the hero scales up at md, it is not one fixed size. */
+.product-hero-banner {
+  background: #fff;
+  border: 1px solid color-mix(in srgb, var(--site-color) 22%, #e5e7eb);
+  border-radius: 16px;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.07);
+}
+
+.product-hero-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+}
+
+.product-hero-image-card {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 78px;
+  height: 78px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid color-mix(in srgb, var(--site-color) 24%, #e5e7eb);
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.product-hero-image {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  object-fit: contain;
+}
+
+.product-hero-title {
+  font-size: 17px;
+  font-weight: 650;
+  color: #0f172a;
+  line-height: 1.22;
+}
+
+.product-hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 7px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--site-color);
+  background: color-mix(in srgb, var(--site-color) 8%, #fff);
+  border: 1px solid color-mix(in srgb, var(--site-color) 18%, #fff);
+  border-radius: 999px;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--site-color) 10%, transparent);
+}
+
+@media (min-width: 768px) {
+  .product-hero-banner {
+    border-radius: 18px;
+  }
+
+  .product-hero-content {
+    gap: 18px;
+    padding: 14px;
+  }
+
+  .product-hero-image-card {
+    width: 100px;
+    height: 100px;
+    padding: 8px;
+    border-radius: 16px;
+  }
+
+  .product-hero-image {
+    width: 82px;
+    height: 82px;
+    border-radius: 12px;
+  }
+
+  .product-hero-title {
+    font-size: 22px;
+  }
+
+  .product-hero-chip {
+    gap: 7px;
+    margin-top: 9px;
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+}
+
+/* Numbered step marker on each order card header. */
+.step-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+  font-family: var(--font-heading), serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--site-color);
+  border-radius: 9999px;
+}
+
+.payment-option {
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.payment-option.is-active {
+  border-color: color-mix(in srgb, var(--site-color) 60%, #fff);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--site-color) 16%, transparent);
 }

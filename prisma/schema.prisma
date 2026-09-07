@@ -676,18 +676,19 @@ model MarketOffer {
 
 model SiteSetting {
   id                   Int     @id @default(1)
-  siteName             String  @default("TopUpsBD")
+  siteName             String  @default("topupshop.co")
   tagline              String  @default("Largest TopUp Site In Bangladesh")
   metaTitle            String? @db.Text
   metaDescription      String? @db.Text
   metaKeywords         String? @db.Text
   ogImage              String?
   favicon              String?
+  logo                 String? // admin-uploaded header/footer logo; falls back to /images/logo.png
   referralBonusPercent Float   @default(1.5) // % of first order amount credited to both referrer and referred user's wallet
   whatsappNumber       String  @default("01343053411")
   telegramLink         String  @default("https://t.me/+K3PmqW02YCI2OGRl")
   facebookLink         String?
-  contactEmail         String  @default("support@topupsbd.com")
+  contactEmail         String  @default("support@topupshop.co")
   bkashNumber          String  @default("01343053411")
   nagadNumber          String  @default("01343053411")
   rocketNumber         String  @default("01343053411")

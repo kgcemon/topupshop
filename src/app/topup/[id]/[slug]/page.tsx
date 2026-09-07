@@ -34,14 +34,14 @@ export async function generateMetadata({
 
   const description =
     product.description ||
-    `${product.name} - TopUpsBD থেকে দ্রুত ও নিরাপদে টপআপ করুন। ${product.category} সার্ভিস।`;
+    `${product.name} - topupshop.co থেকে দ্রুত ও নিরাপদে টপআপ করুন। ${product.category} সার্ভিস।`;
 
   return {
     title: product.name,
     description,
     alternates: { canonical: `/topup/${product.id}/${product.slug}` },
     openGraph: {
-      title: `${product.name} | TopUpsBD`,
+      title: `${product.name} | topupshop.co`,
       description,
       images: [{ url: product.image, width: 800, height: 800 }],
     },
@@ -94,7 +94,7 @@ export default async function TopupProductPage({
     "@type": "Product",
     name: product.name,
     image: product.image,
-    description: product.description || `${product.name} topup - TopUpsBD`,
+    description: product.description || `${product.name} topup - topupshop.co`,
     category: product.category,
     offers: product.rechargeOptions.map((option) => ({
       "@type": "Offer",
@@ -122,7 +122,7 @@ export default async function TopupProductPage({
               bestRating: "5",
               worstRating: "1",
             },
-            author: { "@type": "Person", name: r.user.name || "TopUpsBD Customer" },
+            author: { "@type": "Person", name: r.user.name || "topupshop.co Customer" },
             reviewBody: r.comment,
             datePublished: r.createdAt.toISOString(),
           })),
@@ -141,7 +141,7 @@ export default async function TopupProductPage({
   };
 
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="container m-auto my-3 px-2 md:my-5 md:px-0">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -151,17 +151,21 @@ export default async function TopupProductPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
 
-      <div className="mb-6 flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4">
-        <Image
-          src={product.image}
-          alt={product.name}
-          width={64}
-          height={64}
-          className="h-16 w-16 rounded-lg object-cover"
-        />
-        <div>
-          <h1 className="text-xl font-bold">{product.name}</h1>
-          <p className="text-sm text-gray-500">{product.category} / Top up</p>
+      <div className="product-hero-banner">
+        <div className="product-hero-content">
+          <span className="product-hero-image-card">
+            <Image
+              src={product.image}
+              alt={product.name}
+              width={82}
+              height={82}
+              className="product-hero-image"
+            />
+          </span>
+          <div className="min-w-0">
+            <h1 className="product-hero-title">{product.name}</h1>
+            <span className="product-hero-chip">⚡ {product.category} / Top up</span>
+          </div>
         </div>
       </div>
 
@@ -188,9 +192,11 @@ export default async function TopupProductPage({
       />
 
       {rules.length > 0 && (
-        <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
-          <h2 className="mb-3 text-lg font-bold">Rules &amp; Conditions</h2>
-          <ul className="list-inside list-disc space-y-2 text-sm">
+        <div className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm md:mt-8">
+          <div className="flex items-center gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2">
+            <h2 className="text-sm font-semibold text-gray-800 md:text-base">Rules &amp; Conditions</h2>
+          </div>
+          <ul className="list-inside list-disc space-y-2 p-3 text-sm leading-relaxed text-gray-700">
             {rules.map((rule, i) => (
               <li key={i}>{rule}</li>
             ))}

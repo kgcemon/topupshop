@@ -91,8 +91,8 @@ export default async function BlogPostPage({
     image: post.coverImage ? [post.coverImage] : undefined,
     datePublished: post.publishedAt.toISOString(),
     dateModified: post.updatedAt.toISOString(),
-    author: { "@type": "Organization", name: "TopUpsBD" },
-    publisher: { "@type": "Organization", name: "TopUpsBD" },
+    author: { "@type": "Organization", name: "topupshop.co" },
+    publisher: { "@type": "Organization", name: "topupshop.co" },
     mainEntityOfPage: `${siteUrl}/blog/${post.slug}`,
     interactionStatistic: [
       {
@@ -159,7 +159,7 @@ export default async function BlogPostPage({
           </div>
         ) : (
           <div className="flex aspect-[21/9] w-full items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 font-primary text-2xl font-bold text-primary-600">
-            TopUpsBD Blog
+            topupshop.co Blog
           </div>
         )}
 

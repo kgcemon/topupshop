@@ -3,7 +3,7 @@ import { getSiteSettings } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "Contact Us",
-  description: "TopUpsBD সাপোর্ট টিমের সাথে WhatsApp, Telegram, Messenger বা ইমেইলে যোগাযোগ করুন।",
+  description: "topupshop.co সাপোর্ট টিমের সাথে WhatsApp, Telegram, Messenger বা ইমেইলে যোগাযোগ করুন।",
   alternates: { canonical: "/contact-us" },
 };
 

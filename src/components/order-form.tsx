@@ -48,6 +48,7 @@ export function OrderForm({
 }) {
   const playerIdLabel = inputLabel?.trim() || "এখানে প্লেয়ার আইডি কোড দিন";
   const canOrderAsGuest = !isLoggedIn && allowGuestOrders;
+  const mustLogin = !isLoggedIn && !allowGuestOrders;
   const [selectedOptionId, setSelectedOptionId] = useState<number | undefined>(undefined);
   const [method, setMethod] = useState<"WALLET" | "BKASH" | "NAGAD" | "ROCKET">(
     isLoggedIn ? "WALLET" : "BKASH"
@@ -153,54 +154,48 @@ export function OrderForm({
       <input type="hidden" name="rechargeOptionId" value={selectedOptionId} />
       <input type="hidden" name="paymentMethod" value={method} />
 
-      <div className="space-y-6 lg:grid lg:grid-cols-3 lg:gap-6 lg:space-y-0">
-        <div className="space-y-6 lg:col-span-2">
+      <div className="gap-2 md:flex">
+        <div className="mt-2 w-full md:w-2/3">
           {options.length > 0 && (
-            <div className="rounded-xl border border-gray-200 bg-white p-5">
-              <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-500 text-sm text-white">
-                  1
-                </span>
-                Select Recharge
-              </h2>
-              <hr className="-mx-5 mb-4 border-t border-gray-200" />
-              <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-3">
+            <div className="rounded-md border border-gray-200 bg-white">
+              <div className="flex items-center p-2 text-left">
+                <span className="step-circle">1</span>
+                <h2 className="py-2 font-primary text-lg text-black">Select Recharge</h2>
+              </div>
+              <hr className="border-gray-200" />
+              <div className="grid grid-cols-2 gap-2 p-2 md:grid-cols-3 md:p-4">
                 {options.map((option) => {
                   const outOfStock = option.stock !== null && option.stock <= 0;
                   const isSelected = option.id === selectedOptionId;
+                  // Solid brand teal at rest, pink once picked, muted when unavailable.
+                  const tone = outOfStock
+                    ? { box: "cursor-not-allowed border-gray-300 bg-gray-100 opacity-60", label: "text-gray-500", price: "text-gray-400" }
+                    : isSelected
+                      ? { box: "cursor-pointer border-pink-500 bg-pink-500", label: "text-white", price: "text-white/90" }
+                      : { box: "cursor-pointer border-primary-500 bg-primary-500 hover:bg-primary-600", label: "text-white", price: "text-white/90" };
                   return (
                     <label
                       key={option.id}
-                      className={`flex min-h-[50px] items-center justify-between gap-1.5 rounded-lg border-2 p-2 text-xs font-semibold transition-colors sm:min-h-[56px] sm:gap-2 sm:p-3 sm:text-sm ${
-                        outOfStock
-                          ? "cursor-not-allowed border-gray-200 bg-gray-50 opacity-60"
-                          : "cursor-pointer " + (isSelected ? "border-primary-500 bg-primary-50" : "border-gray-200")
-                      }`}
+                      className={`relative w-full rounded-md border px-4 py-3 text-center font-primary transition-all ${tone.box}`}
                     >
-                      <span className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
-                        <input
-                          type="radio"
-                          name="recharge-display"
-                          className="sr-only"
-                          checked={isSelected}
-                          disabled={outOfStock}
-                          onChange={() => setSelectedOptionId(option.id)}
-                        />
-                        <span
-                          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full sm:h-5 sm:w-5 ${
-                            isSelected && !outOfStock ? "bg-primary-500 text-white" : "bg-gray-300"
-                          }`}
-                        >
-                          {isSelected && !outOfStock && (
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-2.5 w-2.5 sm:h-3 sm:w-3">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M20 6 9 17l-5-5" />
-                            </svg>
-                          )}
+                      <input
+                        type="radio"
+                        name="recharge-display"
+                        className="sr-only"
+                        checked={isSelected}
+                        disabled={outOfStock}
+                        onChange={() => setSelectedOptionId(option.id)}
+                      />
+                      {outOfStock && (
+                        <span className="absolute right-1.5 top-3 z-[5] -translate-y-1/2 rounded-full bg-primary-500 px-2 text-[11px] text-white">
+                          Out of stock
                         </span>
-                        <span className="line-clamp-2 leading-tight">{option.label}</span>
-                      </span>
-                      <span className="shrink-0 whitespace-nowrap font-bold text-primary-600">
-                        {outOfStock ? "Stock Out" : `${formatTaka(option.price)} TK`}
+                      )}
+                      <span className="flex flex-wrap items-baseline justify-center gap-x-1.5">
+                        <span className={`text-sm ${tone.label}`}>{option.label}</span>
+                        <span className={`text-xs ${tone.price}`}>
+                          ৳{formatTaka(option.price)}
+                        </span>
                       </span>
                     </label>
                   );
@@ -208,15 +203,16 @@ export function OrderForm({
               </div>
             </div>
           )}
+        </div>
 
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-500 text-sm text-white">
-                2
-              </span>
-              Account Info
-            </h2>
-            <hr className="-mx-5 mb-4 border-t border-gray-200" />
+        <div className="mt-2 w-full md:w-1/3">
+          <div className="rounded-md border border-gray-200 bg-white">
+            <div className="flex items-center px-3 text-left">
+              <span className="step-circle">2</span>
+              <h2 className="py-2 font-primary text-lg text-black">Account Info</h2>
+            </div>
+            <hr className="border-gray-200" />
+            <div className="p-3">
             <label className="mb-1 block text-sm font-semibold" htmlFor="playerId">
               {playerIdLabel}
             </label>
@@ -225,7 +221,7 @@ export function OrderForm({
               name="playerId"
               required
               placeholder={playerIdLabel}
-              className="mb-3 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="mb-3 w-full rounded-md border border-gray-300 p-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
             {state.fieldErrors?.playerId && (
               <p className="mb-3 -mt-2 text-sm text-red-600">{state.fieldErrors.playerId}</p>
@@ -247,7 +243,7 @@ export function OrderForm({
                   name="guestName"
                   required
                   placeholder="আপনার নাম লিখুন"
-                  className="mb-3 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="mb-3 w-full rounded-md border border-gray-300 p-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                 />
                 {state.fieldErrors?.guestName && (
                   <p className="mb-3 -mt-2 text-sm text-red-600">{state.fieldErrors.guestName}</p>
@@ -260,26 +256,33 @@ export function OrderForm({
                   name="guestPhone"
                   required
                   placeholder="01xxxxxxxxx"
-                  className="mb-3 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="mb-3 w-full rounded-md border border-gray-300 p-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                 />
                 {state.fieldErrors?.guestPhone && (
                   <p className="mb-3 -mt-2 text-sm text-red-600">{state.fieldErrors.guestPhone}</p>
                 )}
               </>
             )}
+            </div>
           </div>
-        </div>
 
-        <div className="space-y-6">
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-500 text-sm text-white">
-                3
-              </span>
-              Select one option
-            </h2>
-            <hr className="-mx-5 mb-4 border-t border-gray-200" />
+          <div className="mt-2 rounded-md border border-gray-200 bg-white">
+            <div className="flex items-center px-3 text-left">
+              <span className="step-circle">3</span>
+              <h2 className="py-2 font-primary text-lg text-black">Select one option</h2>
+            </div>
+            <hr className="border-gray-200" />
+            <div className="p-3">
 
+            {mustLogin ? (
+              <div className="mb-4 rounded-md border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center">
+                <p className="font-primary text-base font-semibold text-secondary-900">
+                  Login Required
+                </p>
+                <p className="mt-1 text-xs text-gray-500">অর্ডার করতে হলে আগে লগইন করুন।</p>
+              </div>
+            ) : (
+              <>
             <div className={`mb-4 grid gap-3 ${isLoggedIn ? "grid-cols-2" : "grid-cols-1"}`}>
               {isLoggedIn && (
                 <PayOption
@@ -365,12 +368,14 @@ export function OrderForm({
                 <input
                   name="transactionId"
                   placeholder="Transaction ID"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full rounded-md border border-gray-300 p-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                 />
                 {state.fieldErrors?.transactionId && (
                   <p className="text-sm text-red-600">{state.fieldErrors.transactionId}</p>
                 )}
               </div>
+            )}
+              </>
             )}
 
             <p className="mb-1 text-sm">
@@ -381,9 +386,6 @@ export function OrderForm({
               <p className="mb-3 text-sm font-semibold text-red-600">
                 এই প্রোডাক্টটি বর্তমানে Stock Out, এখন অর্ডার করা যাবে না।
               </p>
-            )}
-            {!isLoggedIn && !allowGuestOrders && (
-              <p className="mb-3 text-sm font-semibold text-orange-500">Please Login To Purchase</p>
             )}
             {isLoggedIn && insufficientWallet && (
               <p className="mb-3 text-sm font-semibold text-orange-500">
@@ -411,6 +413,7 @@ export function OrderForm({
                 Login
               </Link>
             )}
+            </div>
           </div>
         </div>
       </div>
@@ -442,9 +445,7 @@ function PayOption({
     <button
       type="button"
       onClick={onClick}
-      className={`relative flex flex-col overflow-hidden rounded-lg border-2 bg-white text-center transition-colors ${
-        active ? "border-primary-500" : "border-gray-200"
-      }`}
+      className={`payment-option flex flex-col text-center ${active ? "is-active" : ""}`}
     >
       {active && (
         <span className="absolute left-0 top-0 flex h-6 w-6 items-center justify-center rounded-br-lg bg-primary-500 text-white">

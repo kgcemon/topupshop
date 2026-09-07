@@ -13,6 +13,7 @@ type SiteSettingsValues = {
   metaKeywords: string | null;
   ogImage: string | null;
   favicon: string | null;
+  logo: string | null;
   whatsappNumber: string;
   telegramLink: string;
   facebookLink: string | null;
@@ -42,6 +43,7 @@ export function SiteSettingsForm({ defaultValues }: { defaultValues: SiteSetting
   const [testState, testFormAction, testPending] = useActionState(sendTestEmailAction, initialState);
   const [ogPreview, setOgPreview] = useState<string | null>(defaultValues.ogImage);
   const [faviconPreview, setFaviconPreview] = useState<string | null>(defaultValues.favicon);
+  const [logoPreview, setLogoPreview] = useState<string | null>(defaultValues.logo);
   const [walletIconPreview, setWalletIconPreview] = useState<string | null>(defaultValues.walletIcon);
   const [bkashIconPreview, setBkashIconPreview] = useState<string | null>(defaultValues.bkashIcon);
   const [nagadIconPreview, setNagadIconPreview] = useState<string | null>(defaultValues.nagadIcon);
@@ -54,6 +56,37 @@ export function SiteSettingsForm({ defaultValues }: { defaultValues: SiteSetting
           <Field label="সাইটের নাম" name="siteName" defaultValue={defaultValues.siteName} error={state.fieldErrors?.siteName} />
           <Field label="ট্যাগলাইন" name="tagline" defaultValue={defaultValues.tagline} error={state.fieldErrors?.tagline} />
         </div>
+        <div>
+          <label className="mb-1 block text-sm font-semibold">সাইট লোগো (হেডার ও ফুটারে দেখাবে)</label>
+          <div className="flex flex-wrap items-center gap-3">
+            {logoPreview && (
+              <span className="inline-block rounded-md border border-gray-200 bg-white px-2 py-1">
+                <Image
+                  src={logoPreview}
+                  alt="Logo preview"
+                  width={160}
+                  height={40}
+                  unoptimized
+                  className="h-10 w-auto object-contain"
+                />
+              </span>
+            )}
+            <input
+              type="file"
+              name="logoFile"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) setLogoPreview(URL.createObjectURL(file));
+              }}
+              className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary-500 file:px-3 file:py-1.5 file:text-white"
+            />
+          </div>
+          <p className="mt-1 text-xs text-gray-500">
+            PNG (ট্রান্সপারেন্ট ব্যাকগ্রাউন্ড সবচেয়ে ভালো) — চওড়া লোগো, যেমন 768x170px। খালি রাখলে আগের লোগোই থাকবে।
+          </p>
+        </div>
+
         <div>
           <label className="mb-1 block text-sm font-semibold">Favicon (ব্রাউজার ট্যাব আইকন)</label>
           <div className="flex flex-wrap items-center gap-3">
@@ -107,7 +140,7 @@ export function SiteSettingsForm({ defaultValues }: { defaultValues: SiteSetting
           label="Meta Keywords (কমা দিয়ে আলাদা করুন)"
           name="metaKeywords"
           defaultValue={defaultValues.metaKeywords ?? ""}
-          placeholder="free fire topup, topupsbd, diamond topup bd"
+          placeholder="free fire topup, topupshop, diamond topup bd"
           error={state.fieldErrors?.metaKeywords}
         />
         <div>

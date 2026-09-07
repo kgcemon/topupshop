@@ -47,7 +47,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
         {pending ? "লগইন হচ্ছে..." : "Login"}
       </button>
       <p className="mt-4 text-center text-sm">
-        New user to TopUpsBD?{" "}
+        New user to topupshop.co?{" "}
         <Link href="/register" className="font-bold text-primary-600">
           Register Now
         </Link>

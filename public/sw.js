@@ -1,4 +1,4 @@
-const CACHE_NAME = "topupsbd-static-v1";
+const CACHE_NAME = "topupshop-static-v1";
 const STATIC_PATH_PREFIXES = ["/_next/static/", "/icons/", "/images/", "/favicon.ico"];
 
 self.addEventListener("install", () => {

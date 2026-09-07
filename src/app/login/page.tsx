@@ -4,7 +4,7 @@ import { GoogleSignInButton } from "@/components/google-signin-button";
 
 export const metadata: Metadata = {
   title: "Login",
-  description: "আপনার TopUpsBD একাউন্টে লগইন করুন।",
+  description: "আপনার topupshop.co একাউন্টে লগইন করুন।",
   alternates: { canonical: "/login" },
 };
 

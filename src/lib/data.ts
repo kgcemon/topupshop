@@ -1,23 +1,25 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { ORDER_COUNT_STATUSES } from "@/lib/levels";
 
-export async function getSiteSettings() {
+export const getSiteSettings = cache(async () => {
   const settings = await prisma.siteSetting.findUnique({ where: { id: 1 } });
   return (
     settings ?? {
       id: 1,
-      siteName: "TopUpsBD",
+      siteName: "topupshop.co",
       tagline: "Largest TopUp Site In Bangladesh",
       metaTitle: null,
       metaDescription: null,
       metaKeywords: null,
       ogImage: null,
       favicon: null,
+      logo: null,
       referralBonusPercent: 1.5,
       whatsappNumber: "01343053411",
       telegramLink: "https://t.me/",
       facebookLink: null,
-      contactEmail: "support@topupsbd.com",
+      contactEmail: "support@topupshop.co",
       bkashNumber: "01343053411",
       nagadNumber: "01343053411",
       rocketNumber: "01343053411",
@@ -37,23 +39,23 @@ export async function getSiteSettings() {
       smtpFromName: null,
     }
   );
-}
+});
 
-export async function getActiveBanners() {
+export const getActiveBanners = cache(async () => {
   return prisma.banner.findMany({
     where: { isActive: true },
     orderBy: { sortOrder: "asc" },
   });
-}
+});
 
-export async function getActiveNotice() {
+export const getActiveNotice = cache(async () => {
   return prisma.notice.findFirst({
     where: { isActive: true },
     orderBy: { createdAt: "desc" },
   });
-}
+});
 
-export async function getHomeProducts() {
+export const getHomeProducts = cache(async () => {
   const sections = await prisma.section.findMany({
     where: { isActive: true },
     orderBy: { sortOrder: "asc" },
@@ -67,22 +69,22 @@ export async function getHomeProducts() {
   });
 
   return sections.filter((section) => section.products.length > 0);
-}
+});
 
-export async function getAllSections() {
+export const getAllSections = cache(async () => {
   return prisma.section.findMany({ orderBy: { sortOrder: "asc" } });
-}
+});
 
-export async function getProductById(id: number) {
+export const getProductById = cache(async (id: number) => {
   return prisma.product.findUnique({
     where: { id },
     include: {
       rechargeOptions: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
     },
   });
-}
+});
 
-export async function getUserOrderStats(userId: string) {
+export const getUserOrderStats = cache(async (userId: string) => {
   const result = await prisma.order.aggregate({
     where: { userId, status: { in: [...ORDER_COUNT_STATUSES] } },
     _count: { id: true },
@@ -93,9 +95,9 @@ export async function getUserOrderStats(userId: string) {
     completedOrders: result._count.id,
     totalSpent: result._sum.amount ?? 0,
   };
-}
+});
 
-export async function getDeliveredOrderStats(userId: string) {
+export const getDeliveredOrderStats = cache(async (userId: string) => {
   const result = await prisma.order.aggregate({
     where: { userId, status: "DELIVERED" },
     _count: { id: true },
@@ -106,9 +108,9 @@ export async function getDeliveredOrderStats(userId: string) {
     deliveredOrders: result._count.id,
     deliveredAmount: result._sum.amount ?? 0,
   };
-}
+});
 
-export async function getLeaderboard(currentUserId: string, limit = 50) {
+export const getLeaderboard = cache(async (currentUserId: string, limit = 50) => {
   const grouped = await prisma.order.groupBy({
     by: ["userId"],
     where: { status: { in: [...ORDER_COUNT_STATUSES] } },
@@ -160,25 +162,25 @@ export async function getLeaderboard(currentUserId: string, limit = 50) {
         };
 
   return { top, currentUserEntry, totalRankedCustomers: ranked.length };
-}
+});
 
-export async function getAllActiveProductsForSitemap() {
+export const getAllActiveProductsForSitemap = cache(async () => {
   return prisma.product.findMany({
     where: { isActive: true, type: "NORMAL" },
     select: { id: true, slug: true, updatedAt: true },
   });
-}
+});
 
-export async function getPublishedBlogPosts(limit = 60) {
+export const getPublishedBlogPosts = cache(async (limit = 60) => {
   return prisma.blogPost.findMany({
     where: { isPublished: true },
     orderBy: { publishedAt: "desc" },
     take: limit,
     include: { _count: { select: { likes: true, comments: true } } },
   });
-}
+});
 
-export async function getBlogPostBySlug(slug: string) {
+export const getBlogPostBySlug = cache(async (slug: string) => {
   return prisma.blogPost.findFirst({
     where: { slug, isPublished: true },
     include: {
@@ -202,37 +204,37 @@ export async function getBlogPostBySlug(slug: string) {
       },
     },
   });
-}
+});
 
-export async function getUserNotifications(userId: string, limit = 5) {
+export const getUserNotifications = cache(async (userId: string, limit = 5) => {
   return prisma.notification.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
     take: limit,
     include: { actor: { select: { name: true, image: true } } },
   });
-}
+});
 
-export async function getUnreadNotificationCount(userId: string) {
+export const getUnreadNotificationCount = cache(async (userId: string) => {
   return prisma.notification.count({ where: { userId, isRead: false } });
-}
+});
 
-export async function isBlogPostLikedByUser(postId: number, userId: string) {
+export const isBlogPostLikedByUser = cache(async (postId: number, userId: string) => {
   const like = await prisma.blogLike.findUnique({
     where: { postId_userId: { postId, userId } },
   });
   return !!like;
-}
+});
 
-export async function getLikedBlogCommentIds(postId: number, userId: string) {
+export const getLikedBlogCommentIds = cache(async (postId: number, userId: string) => {
   const likes = await prisma.blogCommentLike.findMany({
     where: { userId, comment: { postId } },
     select: { commentId: true },
   });
   return new Set(likes.map((l) => l.commentId));
-}
+});
 
-export async function getUserReferralStats(userId: string) {
+export const getUserReferralStats = cache(async (userId: string) => {
   const [referredCount, earnedResult] = await Promise.all([
     prisma.user.count({ where: { referredById: userId } }),
     prisma.walletTransaction.aggregate({
@@ -245,18 +247,18 @@ export async function getUserReferralStats(userId: string) {
     referredCount,
     totalEarned: earnedResult._sum.amount ?? 0,
   };
-}
+});
 
-export async function getApprovedReviewsForProduct(productId: number, limit = 12) {
+export const getApprovedReviewsForProduct = cache(async (productId: number, limit = 12) => {
   return prisma.review.findMany({
     where: { productId, isApproved: true },
     orderBy: { createdAt: "desc" },
     take: limit,
     include: { user: { select: { name: true, image: true } } },
   });
-}
+});
 
-export async function getProductReviewStats(productId: number) {
+export const getProductReviewStats = cache(async (productId: number) => {
   const result = await prisma.review.aggregate({
     where: { productId, isApproved: true },
     _avg: { rating: true },
@@ -267,15 +269,15 @@ export async function getProductReviewStats(productId: number) {
     average: result._avg.rating ?? 0,
     count: result._count.id,
   };
-}
+});
 
-export async function getUserReviewForProduct(productId: number, userId: string) {
+export const getUserReviewForProduct = cache(async (productId: number, userId: string) => {
   return prisma.review.findUnique({ where: { productId_userId: { productId, userId } } });
-}
+});
 
-export async function getAllPublishedBlogPostsForSitemap() {
+export const getAllPublishedBlogPostsForSitemap = cache(async () => {
   return prisma.blogPost.findMany({
     where: { isPublished: true },
     select: { slug: true, updatedAt: true },
   });
-}
+});

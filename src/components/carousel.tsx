@@ -19,7 +19,7 @@ export function Carousel({ slides }: { slides: Slide[] }) {
   if (!slides.length) return null;
 
   return (
-    <div className="container mx-auto mt-4 px-3 md:px-4">
+    <div className="container mx-auto my-3 md:my-5">
       <div className="relative w-full overflow-hidden rounded-lg">
         <div className="overflow-hidden">
           <div
@@ -60,8 +60,8 @@ export function Carousel({ slides }: { slides: Slide[] }) {
                 key={slide.id}
                 aria-label={`Slide ${i + 1}`}
                 onClick={() => setIndex(i)}
-                className={`h-1 w-5 rounded-sm transition-colors ${
-                  i === index ? "bg-gray-800" : "bg-gray-400/60"
+                className={`h-1 w-3 transition-colors ${
+                  i === index ? "bg-primary-500" : "bg-[#090f207f]"
                 }`}
               />
             ))}

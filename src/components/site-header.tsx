@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { getSessionWithWallet } from "@/lib/session";
-import { getUserNotifications, getUnreadNotificationCount } from "@/lib/data";
+import { getUserNotifications, getUnreadNotificationCount, getSiteSettings } from "@/lib/data";
 import { LogoutButton } from "@/components/logout-button";
 import { UserMenu } from "@/components/user-menu";
 import { NotificationBell } from "@/components/notification-bell";
@@ -9,6 +9,7 @@ import { SiteHeaderNav } from "@/components/site-header-nav";
 
 export async function SiteHeader() {
   const { session, walletBalance } = await getSessionWithWallet();
+  const settings = await getSiteSettings();
 
   let notifications: Awaited<ReturnType<typeof getUserNotifications>> = [];
   let unreadCount = 0;
@@ -24,16 +25,17 @@ export async function SiteHeader() {
   const isStaff = session?.user?.role === "ADMIN" || session?.user?.role === "MANAGER";
 
   return (
-    <header className="bg-white shadow-sm sticky top-0 z-30">
-      <div className="container mx-auto px-3 py-3 md:px-4">
+    <header className="site-header">
+      <div className="container m-auto p-2 py-3 md:px-0 md:py-5">
         <nav className="flex items-center justify-between">
           <Link href="/" className="shrink-0">
             <Image
-              src="/images/logo.png"
-              alt="TopUpsBD Logo"
+              src={settings.logo || "/images/logo.png"}
+              alt={`${settings.siteName} Logo`}
               width={192}
-              height={56}
-              className="w-40 md:w-48 h-auto"
+              height={43}
+              unoptimized={!!settings.logo}
+              className="h-auto max-h-[58px] w-40 object-contain md:w-48"
             />
           </Link>
 
@@ -64,7 +66,7 @@ export async function SiteHeader() {
             ) : (
               <Link
                 href="/login"
-                className="rounded border-2 border-primary-500 bg-primary-500 text-white px-5 py-2 font-bold hover:bg-primary-600 hover:border-primary-600 transition-colors"
+                className="rounded-md border-2 border-primary-500 bg-primary-500 px-5 py-2 font-bold text-white transition-colors hover:border-primary-600 hover:bg-primary-600"
               >
                 Login
               </Link>

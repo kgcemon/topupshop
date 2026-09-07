@@ -30,7 +30,7 @@ export function BlogPostCard({ post }: { post: CardPost }) {
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center font-primary text-[11px] font-bold text-primary-600 sm:text-lg">
-            TopUpsBD
+            topupshop.co
           </div>
         )}
       </div>

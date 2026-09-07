@@ -4,7 +4,7 @@ import { LegalPage } from "@/components/legal-page";
 
 export const metadata: Metadata = {
   title: "Terms & Conditions",
-  description: "TopUpsBD ব্যবহারের নিয়মাবলী ও শর্তাবলী — অর্ডার, পেমেন্ট এবং একাউন্ট ব্যবহার সংক্রান্ত নীতিমালা।",
+  description: "topupshop.co ব্যবহারের নিয়মাবলী ও শর্তাবলী — অর্ডার, পেমেন্ট এবং একাউন্ট ব্যবহার সংক্রান্ত নীতিমালা।",
   alternates: { canonical: "/terms-and-conditions" },
 };
 

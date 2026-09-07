@@ -1016,6 +1016,18 @@ export async function updateSiteSettingsAction(
     }
   }
 
+  // Kept at its original dimensions (not icon-resized) — a logo is wide, not square.
+  let logo: string | undefined;
+  const logoFile = formData.get("logoFile");
+  if (logoFile instanceof File && logoFile.size > 0) {
+    try {
+      const uploaded = await saveUploadedImage(logoFile, "logo");
+      if (uploaded) logo = uploaded;
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : "লোগো আপলোড ব্যর্থ হয়েছে" };
+    }
+  }
+
   let favicon: string | undefined;
   const faviconFile = formData.get("faviconFile");
   if (faviconFile instanceof File && faviconFile.size > 0) {
@@ -1067,6 +1079,7 @@ export async function updateSiteSettingsAction(
     ...(smtpPassword ? { smtpPassword } : {}),
     ...(ogImage ? { ogImage } : {}),
     ...(favicon ? { favicon } : {}),
+    ...(logo ? { logo } : {}),
     ...iconUploads,
   };
 
