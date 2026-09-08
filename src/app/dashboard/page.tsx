@@ -5,13 +5,13 @@ import { formatTaka, formatOrderNumber } from "@/lib/utils";
 import { OrderStatusBadge } from "@/components/status-badge";
 import { LevelBadge } from "@/components/level-badge";
 import { getLevelProgress } from "@/lib/levels";
-import { getUserOrderStats, getLeaderboard, getDeliveredOrderStats } from "@/lib/data";
+import { getUserOrderStats, getLeaderboard, getDeliveredOrderStats, getSiteSettings } from "@/lib/data";
 
 export default async function DashboardOverviewPage() {
   const session = await auth();
   const userId = session!.user.id;
 
-  const [user, recentOrders, orderStats, leaderboard, deliveredStats] = await Promise.all([
+  const [user, recentOrders, orderStats, leaderboard, deliveredStats, settings] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId } }),
     prisma.order.findMany({
       where: { userId },
@@ -22,6 +22,7 @@ export default async function DashboardOverviewPage() {
     getUserOrderStats(userId),
     getLeaderboard(userId, 1),
     getDeliveredOrderStats(userId),
+    getSiteSettings(),
   ]);
 
   const { current, next, ordersToNext, progressPercent } = getLevelProgress(orderStats.completedOrders);
@@ -31,12 +32,14 @@ export default async function DashboardOverviewPage() {
       <div className="rounded-xl border border-gray-200 bg-white p-6">
         <p className="text-sm text-gray-500">Wallet Balance</p>
         <p className="text-3xl font-bold text-primary-600">{formatTaka(user?.walletBalance ?? 0)} টাকা</p>
-        <Link
-          href="/dashboard/deposit"
-          className="mt-4 inline-block rounded-md bg-primary-500 px-4 py-2 text-sm font-bold text-white hover:bg-primary-600"
-        >
-          টাকা যোগ করুন
-        </Link>
+        {settings.depositEnabled && (
+          <Link
+            href="/dashboard/deposit"
+            className="mt-4 inline-block rounded-md bg-primary-500 px-4 py-2 text-sm font-bold text-white hover:bg-primary-600"
+          >
+            টাকা যোগ করুন
+          </Link>
+        )}
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-6">

@@ -79,9 +79,11 @@ export default async function ProfilePage() {
       <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
         <div className="mb-3 flex items-center justify-between">
           <p className="text-sm text-gray-500">Wallet Balance</p>
-          <Link href="/dashboard/deposit" className="text-sm font-semibold text-primary-600">
-            টাকা যোগ করুন &rarr;
-          </Link>
+          {settings.depositEnabled && (
+            <Link href="/dashboard/deposit" className="text-sm font-semibold text-primary-600">
+              টাকা যোগ করুন &rarr;
+            </Link>
+          )}
         </div>
         <p className="text-2xl font-bold text-primary-600">{formatTaka(user?.walletBalance ?? 0)} টাকা</p>
       </div>

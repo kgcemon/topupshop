@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { depositSchema } from "@/lib/validation";
+import { getSiteSettings } from "@/lib/data";
 import type { ActionState } from "@/lib/actions/auth-actions";
 import { claimMatchingPaymentSms } from "@/lib/payment-sms-match";
 import {
@@ -20,6 +21,11 @@ export async function depositAction(
   const session = await auth();
   if (!session?.user) {
     return { error: "প্রথমে লগইন করুন।" };
+  }
+
+  const settings = await getSiteSettings();
+  if (!settings.depositEnabled) {
+    return { error: "ডিপোজিট আপাতত বন্ধ আছে।" };
   }
 
   const parsed = depositSchema.safeParse({

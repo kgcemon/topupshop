@@ -1068,6 +1068,7 @@ export async function updateSiteSettingsAction(
     facebookLink: parsed.data.facebookLink || null,
     allowGuestOrders: formData.get("allowGuestOrders") === "on",
     showHomeProducts: formData.get("showHomeProducts") === "on",
+    depositEnabled: formData.get("depositEnabled") === "on",
     smtpEnabled: formData.get("smtpEnabled") === "on",
     smtpSecure: formData.get("smtpSecure") === "on",
     smtpHost: parsed.data.smtpHost || null,

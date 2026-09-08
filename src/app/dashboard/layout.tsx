@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { formatDhakaDateTime } from "@/lib/utils";
 import { AuthSessionProvider } from "@/components/session-provider";
 import { DashboardNav } from "@/components/dashboard-nav";
+import { getSiteSettings } from "@/lib/data";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -12,12 +13,13 @@ export const metadata: Metadata = {
 
 const NAV = [
   { href: "/dashboard", label: "Overview" },
-  { href: "/dashboard/deposit", label: "Deposit" },
   { href: "/dashboard/orders", label: "Order History" },
   { href: "/dashboard/market", label: "My Market Listings" },
   { href: "/dashboard/leaderboard", label: "Rank & Leaderboard" },
   { href: "/dashboard/profile", label: "Profile" },
 ];
+
+const DEPOSIT_NAV_ITEM = { href: "/dashboard/deposit", label: "Deposit" };
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -25,10 +27,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect("/login");
   }
 
-  const dbUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { isBlocked: true, blockedUntil: true, blockReason: true },
-  });
+  const [dbUser, settings] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { isBlocked: true, blockedUntil: true, blockReason: true },
+    }),
+    getSiteSettings(),
+  ]);
   const isCurrentlyBlocked =
     dbUser?.isBlocked && (!dbUser.blockedUntil || dbUser.blockedUntil > new Date());
 
@@ -64,7 +69,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <AuthSessionProvider>
       <div className="container mx-auto px-3 py-4 md:px-4 md:py-8">
         <div className="grid gap-6 md:grid-cols-[200px_1fr]">
-          <DashboardNav items={NAV} />
+          <DashboardNav
+            items={settings.depositEnabled ? [NAV[0], DEPOSIT_NAV_ITEM, ...NAV.slice(1)] : NAV}
+          />
           <div>{children}</div>
         </div>
       </div>

@@ -33,6 +33,7 @@ export function OrderForm({
   paymentIcons,
   stockOut,
   allowGuestOrders,
+  depositEnabled,
   whatsappNumber,
 }: {
   productId: number;
@@ -44,6 +45,7 @@ export function OrderForm({
   paymentIcons: PaymentIcons;
   stockOut: boolean;
   allowGuestOrders: boolean;
+  depositEnabled: boolean;
   whatsappNumber: string;
 }) {
   const playerIdLabel = inputLabel?.trim() || "এখানে প্লেয়ার আইডি কোড দিন";
@@ -404,10 +406,15 @@ export function OrderForm({
             )}
             {isLoggedIn && insufficientWallet && (
               <p className="mb-3 text-sm font-semibold text-orange-500">
-                ওয়ালেটে পর্যাপ্ত ব্যালেন্স নেই।{" "}
-                <Link href="/dashboard/deposit" className="underline">
-                  টাকা যোগ করুন
-                </Link>
+                ওয়ালেটে পর্যাপ্ত ব্যালেন্স নেই।
+                {depositEnabled && (
+                  <>
+                    {" "}
+                    <Link href="/dashboard/deposit" className="underline">
+                      টাকা যোগ করুন
+                    </Link>
+                  </>
+                )}
               </p>
             )}
             {state.error && <p className="mb-3 text-sm text-red-600">{state.error}</p>}

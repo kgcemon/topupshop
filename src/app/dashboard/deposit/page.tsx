@@ -29,18 +29,28 @@ export default async function DepositPage() {
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="rounded-xl border border-gray-200 bg-white p-6">
         <h1 className="mb-4 text-lg font-bold">Deposit Request</h1>
-        <DepositForm
-          numbers={{
-            bkashNumber: settings.bkashNumber,
-            nagadNumber: settings.nagadNumber,
-            rocketNumber: settings.rocketNumber,
-          }}
-          icons={{
-            bkashIcon: settings.bkashIcon,
-            nagadIcon: settings.nagadIcon,
-            rocketIcon: settings.rocketIcon,
-          }}
-        />
+        {settings.depositEnabled ? (
+          <DepositForm
+            numbers={{
+              bkashNumber: settings.bkashNumber,
+              nagadNumber: settings.nagadNumber,
+              rocketNumber: settings.rocketNumber,
+            }}
+            icons={{
+              bkashIcon: settings.bkashIcon,
+              nagadIcon: settings.nagadIcon,
+              rocketIcon: settings.rocketIcon,
+            }}
+          />
+        ) : (
+          <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
+            <p className="text-sm font-semibold text-gray-700">ডিপোজিট আপাতত বন্ধ আছে</p>
+            <p className="mt-1 text-xs text-gray-500">
+              এখন নতুন কোনো টাকা যোগ করার রিকোয়েস্ট নেওয়া হচ্ছে না। ওয়ালেটে থাকা ব্যালেন্স দিয়ে
+              আগের মতোই অর্ডার করতে পারবেন। সহায়তার জন্য সাপোর্টে যোগাযোগ করুন।
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-6">

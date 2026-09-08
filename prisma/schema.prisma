@@ -700,6 +700,8 @@ model SiteSetting {
   marketEnabled        Boolean @default(true)
   // Off hides every product section on the home page (the topup pages stay reachable by direct link)
   showHomeProducts     Boolean @default(true)
+  // Off hides every wallet-deposit entry point site-wide and refuses new deposit requests
+  depositEnabled       Boolean @default(true)
   paymentSmsSecret     String? @db.Text // shared secret the mobile SMS-forwarder app must pass as ?secret= to /api/payment-sms
 
   // When enabled, /api/payment-sms checks each method's running account

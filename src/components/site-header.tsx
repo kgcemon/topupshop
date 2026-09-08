@@ -60,6 +60,7 @@ export async function SiteHeader() {
                 image={session.user.image ?? null}
                 walletBalance={walletBalance}
                 isAdmin={isStaff}
+                depositEnabled={settings.depositEnabled}
               >
                 <LogoutButton className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-red-600 hover:bg-red-50 transition-colors" />
               </UserMenu>

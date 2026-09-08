@@ -37,6 +37,7 @@ export default async function AdminSettingsPage() {
           referralBonusPercent: settings.referralBonusPercent,
           allowGuestOrders: settings.allowGuestOrders,
           showHomeProducts: settings.showHomeProducts,
+          depositEnabled: settings.depositEnabled,
           smtpEnabled: settings.smtpEnabled,
           smtpHost: settings.smtpHost,
           smtpPort: settings.smtpPort,

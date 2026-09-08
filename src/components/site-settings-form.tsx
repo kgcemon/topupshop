@@ -28,6 +28,7 @@ type SiteSettingsValues = {
   referralBonusPercent: number;
   allowGuestOrders: boolean;
   showHomeProducts: boolean;
+  depositEnabled: boolean;
   smtpEnabled: boolean;
   smtpHost: string | null;
   smtpPort: number | null;
@@ -234,6 +235,25 @@ export function SiteSettingsForm({ defaultValues }: { defaultValues: SiteSetting
               চালু থাকলে হোমপেজে সব সেকশন ও প্রোডাক্ট আগের মতোই দেখাবে। বন্ধ করলে হোমপেজ থেকে সব
               প্রোডাক্ট লুকিয়ে যাবে (ব্যানার, নোটিশ ও ব্লগ ঠিক থাকবে) — প্রোডাক্ট ডিলিট হবে না,
               ডাইরেক্ট লিংকে টপআপ পেজ কাজ করতে থাকবে।
+            </span>
+          </span>
+        </label>
+      </Section>
+
+      <Section title="ডিপোজিট (ওয়ালেট রিচার্জ)">
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            name="depositEnabled"
+            defaultChecked={defaultValues.depositEnabled}
+            className="mt-1 h-4 w-4 accent-primary-500"
+          />
+          <span>
+            <span className="block text-sm font-semibold">ডিপোজিট সিস্টেম চালু রাখুন</span>
+            <span className="mt-0.5 block text-xs text-gray-500">
+              বন্ধ করলে পুরো সাইট থেকে &ldquo;টাকা যোগ করুন&rdquo; লিংক, মেনু ও ডিপোজিট ফর্ম লুকিয়ে যাবে এবং
+              নতুন কোনো ডিপোজিট রিকোয়েস্ট জমা নেওয়া হবে না। ইউজারের ওয়ালেটে থাকা ব্যালেন্স দিয়ে অর্ডার
+              আগের মতোই করা যাবে, আর পুরনো রিকোয়েস্টগুলো অ্যাডমিন প্যানেলে ঠিকই দেখা যাবে।
             </span>
           </span>
         </label>

@@ -11,6 +11,7 @@ export function UserMenu({
   image,
   walletBalance,
   isAdmin,
+  depositEnabled,
   children,
 }: {
   name: string | null;
@@ -18,6 +19,7 @@ export function UserMenu({
   image: string | null;
   walletBalance: number;
   isAdmin: boolean;
+  depositEnabled: boolean;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -91,9 +93,11 @@ export function UserMenu({
             <MenuLink href="/dashboard/profile" onNavigate={() => setOpen(false)}>
               Profile
             </MenuLink>
-            <MenuLink href="/dashboard/deposit" onNavigate={() => setOpen(false)}>
-              টাকা যোগ করুন
-            </MenuLink>
+            {depositEnabled && (
+              <MenuLink href="/dashboard/deposit" onNavigate={() => setOpen(false)}>
+                টাকা যোগ করুন
+              </MenuLink>
+            )}
             {isAdmin && (
               <MenuLink href="/admin" onNavigate={() => setOpen(false)}>
                 Admin Panel
