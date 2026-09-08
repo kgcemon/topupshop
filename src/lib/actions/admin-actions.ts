@@ -1067,6 +1067,7 @@ export async function updateSiteSettingsAction(
     telegramLink: parsed.data.telegramLink || "",
     facebookLink: parsed.data.facebookLink || null,
     allowGuestOrders: formData.get("allowGuestOrders") === "on",
+    showHomeProducts: formData.get("showHomeProducts") === "on",
     smtpEnabled: formData.get("smtpEnabled") === "on",
     smtpSecure: formData.get("smtpSecure") === "on",
     smtpHost: parsed.data.smtpHost || null,

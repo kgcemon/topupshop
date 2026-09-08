@@ -29,6 +29,7 @@ export const getSiteSettings = cache(async () => {
       walletIcon: null,
       allowGuestOrders: false,
       marketEnabled: true,
+      showHomeProducts: true,
       smtpEnabled: false,
       smtpHost: null,
       smtpPort: 587,

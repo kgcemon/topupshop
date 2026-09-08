@@ -27,6 +27,7 @@ type SiteSettingsValues = {
   walletIcon: string | null;
   referralBonusPercent: number;
   allowGuestOrders: boolean;
+  showHomeProducts: boolean;
   smtpEnabled: boolean;
   smtpHost: string | null;
   smtpPort: number | null;
@@ -217,6 +218,25 @@ export function SiteSettingsForm({ defaultValues }: { defaultValues: SiteSetting
             onChange={(file) => setRocketIconPreview(URL.createObjectURL(file))}
           />
         </div>
+      </Section>
+
+      <Section title="হোমপেজ প্রোডাক্ট">
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            name="showHomeProducts"
+            defaultChecked={defaultValues.showHomeProducts}
+            className="mt-1 h-4 w-4 accent-primary-500"
+          />
+          <span>
+            <span className="block text-sm font-semibold">হোমপেজে প্রোডাক্ট দেখান</span>
+            <span className="mt-0.5 block text-xs text-gray-500">
+              চালু থাকলে হোমপেজে সব সেকশন ও প্রোডাক্ট আগের মতোই দেখাবে। বন্ধ করলে হোমপেজ থেকে সব
+              প্রোডাক্ট লুকিয়ে যাবে (ব্যানার, নোটিশ ও ব্লগ ঠিক থাকবে) — প্রোডাক্ট ডিলিট হবে না,
+              ডাইরেক্ট লিংকে টপআপ পেজ কাজ করতে থাকবে।
+            </span>
+          </span>
+        </label>
       </Section>
 
       <Section title="গেস্ট অর্ডার">

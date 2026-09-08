@@ -25,13 +25,15 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 export default async function HomePage() {
-  const [banners, notice, sections, latestPosts, settings] = await Promise.all([
+  const [banners, notice, latestPosts, settings] = await Promise.all([
     getActiveBanners(),
     getActiveNotice(),
-    getHomeProducts(),
     getPublishedBlogPosts(4),
     getSiteSettings(),
   ]);
+
+  // Admin toggle on /admin/settings — off keeps every product off the home page.
+  const sections = settings.showHomeProducts ? await getHomeProducts() : [];
 
   return (
     <div className="p-2">
