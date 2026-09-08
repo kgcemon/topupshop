@@ -163,43 +163,54 @@ export function OrderForm({
                 <h2 className="py-2 font-primary text-lg text-black">Select Recharge</h2>
               </div>
               <hr className="border-gray-200" />
-              <div className="grid grid-cols-2 gap-2 p-2 md:grid-cols-3 md:p-4">
+              <div className="grid grid-cols-2 gap-2 p-2 sm:gap-3 md:grid-cols-3 md:p-4">
                 {options.map((option) => {
                   const outOfStock = option.stock !== null && option.stock <= 0;
-                  const isSelected = option.id === selectedOptionId;
-                  // White tile with a hairline border; the brand colour only
-                  // marks the price and the selected state.
+                  const isSelected = option.id === selectedOptionId && !outOfStock;
+                  // A row per package: the radio dot fills with a tick once
+                  // picked, so selection reads the same as a native radio list.
                   const tone = outOfStock
-                    ? { box: "cursor-not-allowed border-[#138f772b] bg-white opacity-60", label: "text-gray-400", price: "text-gray-400" }
+                    ? { box: "cursor-not-allowed border-gray-200 bg-white opacity-60", dot: "bg-gray-300", price: "text-gray-400" }
                     : isSelected
-                      ? { box: "cursor-pointer border-primary-500 bg-primary-50", label: "text-secondary-900", price: "text-primary-500" }
-                      : { box: "cursor-pointer border-[#138f772b] bg-white hover:border-primary-500", label: "text-secondary-900", price: "text-primary-500" };
+                      ? { box: "cursor-pointer border-primary-500 bg-primary-50", dot: "bg-primary-500 text-white", price: "text-primary-600" }
+                      : { box: "cursor-pointer border-gray-200 bg-white hover:border-primary-500", dot: "bg-gray-300", price: "text-primary-600" };
                   return (
                     <label
                       key={option.id}
-                      className={`relative w-full rounded-md border px-4 py-3 text-center font-primary transition-all ${tone.box}`}
+                      className={`flex min-h-[50px] items-center justify-between gap-1.5 rounded-lg border-2 p-2 text-xs font-semibold transition-colors sm:min-h-[56px] sm:gap-2 sm:p-3 sm:text-sm ${tone.box}`}
                     >
-                      <input
-                        type="radio"
-                        name="recharge-display"
-                        className="sr-only"
-                        checked={isSelected}
-                        disabled={outOfStock}
-                        onChange={() => setSelectedOptionId(option.id)}
-                      />
-                      {outOfStock && (
-                        <span className="absolute right-1.5 top-3 z-[5] -translate-y-1/2 rounded-full bg-primary-500 px-2 text-[11px] text-white">
-                          Out of stock
+                      <span className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
+                        <input
+                          type="radio"
+                          name="recharge-display"
+                          className="sr-only"
+                          checked={isSelected}
+                          disabled={outOfStock}
+                          onChange={() => setSelectedOptionId(option.id)}
+                        />
+                        <span
+                          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full sm:h-5 sm:w-5 ${tone.dot}`}
+                        >
+                          {isSelected && (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              className="h-2.5 w-2.5 sm:h-3 sm:w-3"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M20 6 9 17l-5-5" />
+                            </svg>
+                          )}
                         </span>
-                      )}
-                      {isSelected && !outOfStock && (
-                        <SelectedCheck className="rounded-br-md rounded-tl-md" />
-                      )}
-                      <span className="flex flex-wrap items-baseline justify-center gap-x-1.5">
-                        <span className={`text-sm ${tone.label}`}>{option.label}</span>
-                        <span className={`text-xs ${tone.price}`}>
-                          ৳{formatTaka(option.price)}
-                        </span>
+                        <span className="line-clamp-2 leading-tight">{option.label}</span>
+                      </span>
+                      <span className="flex shrink-0 flex-col items-end whitespace-nowrap leading-tight">
+                        <span className={`font-bold ${tone.price}`}>৳{formatTaka(option.price)}</span>
+                        {outOfStock && (
+                          <span className="text-[10px] font-bold uppercase text-red-500">Out of stock</span>
+                        )}
                       </span>
                     </label>
                   );
@@ -434,8 +445,7 @@ function DetailRow({ label, value, mono }: { label: string; value: string; mono?
   );
 }
 
-// Corner tick shown on whichever option is currently picked — shared so the
-// recharge packages and the payment methods mark selection the same way.
+// Corner tick marking the payment method currently picked.
 function SelectedCheck({ className = "" }: { className?: string }) {
   return (
     <span
