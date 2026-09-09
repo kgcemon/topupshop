@@ -6,8 +6,8 @@ export function WhatsAppIcon({ className = "h-5 w-5 shrink-0" }: { className?: s
   );
 }
 
-/** Deep-links to the admin's WhatsApp with a prefilled message so a buyer can negotiate an order's price directly. */
-export function WhatsappBargainLink({
+/** Deep-links to the admin's WhatsApp with a prefilled message — used both to open a support thread about an order and to negotiate a market listing. */
+export function WhatsappLink({
   whatsappNumber,
   message,
   className,

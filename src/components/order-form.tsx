@@ -8,7 +8,7 @@ import { placeOrderAction, type OrderActionState } from "@/lib/actions/order-act
 import { formatTaka, formatOrderNumber, formatDhakaDateTime } from "@/lib/utils";
 import { OrderStatusBadge } from "@/components/status-badge";
 import { PaymentNumberCard } from "@/components/payment-number-card";
-import { WhatsappBargainLink, WhatsAppIcon } from "@/components/whatsapp-bargain-link";
+import { WhatsappLink, WhatsAppIcon } from "@/components/whatsapp-link";
 
 type RechargeOption = { id: number; label: string; price: number; stock: number | null };
 
@@ -125,14 +125,14 @@ export function OrderForm({
         </div>
 
         <div className="space-y-2 border-t border-gray-100 p-5">
-          <WhatsappBargainLink
+          <WhatsappLink
             whatsappNumber={whatsappNumber}
-            message={`আসসালামু আলাইকুম, আমি অর্ডার ${formatOrderNumber(o.orderSerial)} (${o.productName} — ${o.optionLabel}, মূল্য ${formatTaka(o.amount)} টাকা) নিয়ে বার্গেইন করতে চাই।`}
+            message={`আসসালামু আলাইকুম, আমার অর্ডার ${formatOrderNumber(o.orderSerial)} (${o.productName} — ${o.optionLabel}, মূল্য ${formatTaka(o.amount)} টাকা) নিয়ে সাহায্য দরকার।`}
             className="flex w-full items-center justify-center gap-2 rounded-md bg-green-600 py-2.5 text-center font-bold text-white hover:bg-green-700"
           >
             <WhatsAppIcon />
-            দাম নিয়ে বার্গেইন করতে WhatsApp করুন
-          </WhatsappBargainLink>
+            Help Line
+          </WhatsappLink>
           {isLoggedIn ? (
             <Link
               href="/dashboard/orders"

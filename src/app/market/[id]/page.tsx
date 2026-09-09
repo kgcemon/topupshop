@@ -6,7 +6,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSiteSettings } from "@/lib/data";
 import { formatTaka } from "@/lib/utils";
-import { WhatsappBargainLink, WhatsAppIcon } from "@/components/whatsapp-bargain-link";
+import { WhatsappLink, WhatsAppIcon } from "@/components/whatsapp-link";
 import { MarketOfferForm } from "@/components/market-offer-form";
 
 export const metadata: Metadata = {
@@ -114,14 +114,14 @@ export default async function MarketListingPage({ params }: { params: Promise<{ 
           )}
         </div>
 
-        <WhatsappBargainLink
+        <WhatsappLink
           whatsappNumber={settings.whatsappNumber}
           message={`আসসালামু আলাইকুম, আমি এই লিস্টিংটি কিনতে/দামাদামি করতে চাই: "${listing.title}" (${listing.game}) — মূল্য ৳${formatTaka(listing.price)}। Listing ID: ${listing.id}`}
           className="flex w-full items-center justify-center gap-2 rounded-md bg-green-600 py-2.5 text-center text-sm font-bold text-white hover:bg-green-700"
         >
           <WhatsAppIcon />
           তাড়াতাড়ি যোগাযোগ করতে WhatsApp করুন
-        </WhatsappBargainLink>
+        </WhatsappLink>
         <p className="mt-2 text-center text-xs text-gray-500">
           বিক্রেতার সাথে সরাসরি নয় — আমাদের টিম আপনার হয়ে দামাদামি করে ডিল ফাইনাল করবে।
         </p>
