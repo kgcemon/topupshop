@@ -2,6 +2,7 @@ import type { DeliveryMethod } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { enqueueUnipinFulfillmentJob, processUnipinFulfillmentJob } from "@/lib/unipin-queue";
 import { fulfillShellOrder } from "@/lib/shell-fulfillment";
+import { fulfillFFLikesOrder } from "@/lib/fflikes-fulfillment";
 import { notifyAdmins } from "@/lib/notifications";
 import { formatOrderNumber } from "@/lib/utils";
 
@@ -24,6 +25,7 @@ export async function fulfillOrder(orderId: string, deliveryMethod: DeliveryMeth
     return processUnipinFulfillmentJob(orderId);
   }
   if (deliveryMethod === "SHELL") return fulfillShellOrder(orderId);
+  if (deliveryMethod === "FFLIKES") return fulfillFFLikesOrder(orderId);
   return { status: "not-applicable" };
 }
 
@@ -44,7 +46,13 @@ export async function processOrderFulfillment(
   const result = await fulfillOrder(orderId, deliveryMethod);
 
   if (result.status === "fulfilled" || result.status === "already-fulfilled") {
-    await prisma.order.update({ where: { id: orderId }, data: { status: "RUNNING" } });
+    // Never walk a finished order backwards: a synchronous method (FFLIKES)
+    // delivers inside fulfillOrder above, and a callback-driven one can land
+    // its confirmation before we get here.
+    await prisma.order.updateMany({
+      where: { id: orderId, status: { not: "DELIVERED" } },
+      data: { status: "RUNNING" },
+    });
   } else if (result.status === "insufficient" || result.status === "failed") {
     await notifyAdmins(prisma, {
       actorId: notifyContext.actorId ?? null,

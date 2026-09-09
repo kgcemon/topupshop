@@ -459,7 +459,7 @@ export async function deleteRechargeOptionAction(formData: FormData) {
   revalidatePath("/");
 }
 
-const DELIVERY_METHODS = ["UNIPIN", "SHELL", "MANUAL"] as const;
+const DELIVERY_METHODS = ["UNIPIN", "SHELL", "FFLIKES", "MANUAL"] as const;
 
 function parseDeliveryMethod(formData: FormData): (typeof DELIVERY_METHODS)[number] {
   const raw = String(formData.get("deliveryMethod") || "MANUAL");

@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logApiCall } from "@/lib/api-log";
-import { createNotification, notifyAdmins } from "@/lib/notifications";
-import { grantFirstOrderReferralBonus } from "@/lib/referral";
+import { notifyAdmins } from "@/lib/notifications";
 import { formatOrderNumber } from "@/lib/utils";
-import { sendOrderDeliveredEmail } from "@/lib/mailer";
+import { deliverOrder } from "@/lib/order-delivery";
 
 // Mirrors src/app/api/unipin/callback/route.ts — same vendor/payload shape
 // (status/content/orderid, same tgbotid), just for SHELL orders (see
@@ -76,33 +75,10 @@ export async function POST(request: Request) {
     const partsTotal = confirmed.apiPartsTotal ?? 1;
     const allPartsConfirmed = confirmed.apiPartsDone >= partsTotal;
 
-    if (allPartsConfirmed && order.status !== "DELIVERED") {
-      await prisma.$transaction(async (tx) => {
-        await tx.order.update({ where: { id: order.id }, data: { status: "DELIVERED" } });
-
-        if (order.userId) {
-          await grantFirstOrderReferralBonus(tx, {
-            buyerId: order.userId,
-            orderId: order.id,
-            orderSerial: order.orderSerial,
-            orderAmount: order.amount,
-            reviewedById: null,
-          });
-
-          await createNotification(tx, {
-            userId: order.userId,
-            type: "ORDER_COMPLETED",
-            message: `আপনার অর্ডার ${formatOrderNumber(order.orderSerial)} সফলভাবে ডেলিভার হয়েছে!`,
-            link: "/dashboard/orders",
-          });
-        }
-      });
-
-      // Best-effort, outside the transaction — see sendOrderDeliveredEmail.
-      await sendOrderDeliveredEmail(order.user?.email, {
-        orderNumber: formatOrderNumber(order.orderSerial),
-        amount: order.amount,
-      });
+    if (allPartsConfirmed) {
+      // Shared with the synchronous delivery methods, and idempotent — a
+      // duplicate callback for an already-delivered order changes nothing.
+      await deliverOrder(order.id);
     }
   } else {
     const errorMessage = content ?? "Shell callback ব্যর্থতা রিপোর্ট করেছে";

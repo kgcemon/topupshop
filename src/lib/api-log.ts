@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 export async function logApiCall(entry: {
   orderId?: string;
   apiSettingId?: number;
-  deliveryMethod?: "UNIPIN" | "SHELL";
+  deliveryMethod?: "UNIPIN" | "SHELL" | "FFLIKES";
   denom?: string;
   requestBody?: string;
   responseBody?: string;

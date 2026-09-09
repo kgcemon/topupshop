@@ -172,6 +172,7 @@ model Product {
 enum DeliveryMethod {
   UNIPIN
   SHELL
+  FFLIKES // UcBot FF Likes API (fflikes.ucbot.net) — synchronous GET, no callback: a successful response delivers the order outright
   MANUAL // no automation — admin fulfills by hand and marks the order DELIVERED
 }
 
@@ -237,12 +238,12 @@ model Order {
   apiClaimedAt DateTime?
 
   // A denom recipe can list the same package more than once ("4,4",
-  // "LITE,LITE") and the vendor takes one API call per entry. These track that
-  // sequence so a retry resumes at the first unsent part instead of
+  // "LITE,LITE", "100,100") and the vendor takes one API call per entry. These
+  // track that sequence so a retry resumes at the first unsent part instead of
   // re-sending — and paying for — one the vendor already accepted.
   apiPartsTotal Int? // parts this recipe needs; null until the first dispatch, which is also how pre-existing orders are recognised
   apiPartsSent  Int  @default(0) // parts the vendor accepted
-  apiPartsDone  Int  @default(0) // parts the vendor confirmed via callback
+  apiPartsDone  Int  @default(0) // parts confirmed complete (via callback for Shell; immediately for synchronous APIs)
 
   // Stamped the moment a refund is credited to the buyer's wallet, by either
   // the automatic cancel/reject path or an admin's explicit Refund action.
@@ -301,6 +302,7 @@ enum ApiSettingType {
   UNIPIN
   GARENA_SHELL // legacy/unused value, unrelated to the Shell delivery method below — do not repurpose. Kept for the separate manual GarenaShellAccount vault feature.
   SHELL // automatable Shell top-up API config, used only by orders with RechargeOption.deliveryMethod = SHELL. Fully separate from GARENA_SHELL and from UNIPIN.
+  FFLIKES // UcBot FF Likes: apiKey = api_key, endpoint = base URL (default https://fflikes.ucbot.net), code = server_name (default BD)
   OTHER
 }
 

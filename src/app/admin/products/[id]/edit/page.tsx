@@ -141,6 +141,7 @@ export default async function EditProductPage({
                     >
                       <option value="UNIPIN">UniPin</option>
                       <option value="SHELL">Shell</option>
+                      <option value="FFLIKES">FF Likes</option>
                       <option value="MANUAL">Manual</option>
                     </select>
                     <button className="rounded-md border border-gray-300 px-2 py-1 text-xs font-bold hover:bg-gray-50">
@@ -246,6 +247,7 @@ export default async function EditProductPage({
             >
               <option value="UNIPIN">UniPin</option>
               <option value="SHELL">Shell</option>
+              <option value="FFLIKES">FF Likes</option>
               <option value="MANUAL">Manual</option>
             </select>
           </div>

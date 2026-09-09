@@ -10,6 +10,7 @@ import {
 const TYPE_LABELS: Record<string, string> = {
   UNIPIN: "Unipin",
   SHELL: "Shell (New)",
+  FFLIKES: "FF Likes (UcBot)",
   GARENA_SHELL: "Garena Shell",
   OTHER: "Other",
 };
@@ -36,6 +37,7 @@ export default async function AdminApiSettingsPage() {
             <select name="type" className="rounded-md border border-gray-300 px-3 py-2 text-sm">
               <option value="UNIPIN">Unipin</option>
               <option value="SHELL">Shell (New)</option>
+              <option value="FFLIKES">FF Likes (UcBot)</option>
               <option value="GARENA_SHELL">Garena Shell</option>
               <option value="OTHER">Other</option>
             </select>
@@ -148,6 +150,7 @@ export default async function AdminApiSettingsPage() {
                   >
                     <option value="UNIPIN">Unipin</option>
                     <option value="SHELL">Shell (New)</option>
+                    <option value="FFLIKES">FF Likes (UcBot)</option>
                     <option value="GARENA_SHELL">Garena Shell</option>
                     <option value="OTHER">Other</option>
                   </select>
