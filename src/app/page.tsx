@@ -71,22 +71,28 @@ export default async function HomePage() {
       </div>
 
       <section className="container mx-auto md:mb-10">
-        <div className="my-5 flex flex-nowrap items-center justify-center gap-2 sm:gap-4 md:my-10">
+        <div className="my-5 flex items-center justify-center md:my-10">
           <a
-            href="https://t.me/+3RexJMq7g0JmZDFl"
+            href="https://play.google.com/store/apps/details?id=com.bongoacademy.codzshop&hl=en"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex flex-1 items-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-2.5 py-1.5 transition-shadow hover:shadow-md sm:flex-none sm:gap-3 sm:px-4 sm:py-2"
+            className="flex w-full items-center justify-center gap-3 rounded-xl border-2 border-gray-300 bg-white px-4 py-2.5 transition-shadow hover:shadow-md sm:gap-4 sm:py-3"
           >
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-500 sm:h-8 sm:w-8">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="h-4 w-4 sm:h-5 sm:w-5">
-                <path d="M21.05 3.79 2.6 10.98c-1.24.5-1.23 1.2-.23 1.5l4.72 1.47 1.82 5.53c.22.6.37.84.75.84.38 0 .55-.17.75-.38l1.8-1.75 4.75 3.5c.87.48 1.5.23 1.72-.8L22 5.06c.3-1.26-.48-1.83-1.95-1.27Z" />
-              </svg>
-            </span>
-            <span className="text-[11px] font-bold leading-tight sm:text-sm">
-              Giveway &amp; Offer Update
+            {/* Inline rather than the old /images/app_link.png, which is only
+                48x11 and turned into a blurred sliver at this size. */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              className="h-8 w-8 shrink-0 text-primary-600 sm:h-10 sm:w-10"
+              fill="currentColor"
+            >
+              <path d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.9-.18l13.363-7.514-3.263-3.239z" />
+            </svg>
+            <span className="text-xs font-bold leading-tight sm:text-base">
+              Download Our Mobile App
               <br />
-              <span className="text-primary-600">Join Telegram</span>
+              <span className="text-primary-600">Get it on Google Play &rarr;</span>
             </span>
           </a>
         </div>
