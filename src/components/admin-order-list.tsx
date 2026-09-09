@@ -479,6 +479,7 @@ function OrderCard({
                 <option value="DELIVERED">DELIVERED</option>
                 <option value="REJECTED">REJECTED</option>
                 <option value="CANCELLED">CANCELLED</option>
+                <option value="REFUNDED">REFUNDED</option>
                 <option value="AUTO_FAILED">AUTO_FAILED</option>
               </select>
               <input

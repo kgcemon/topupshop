@@ -50,6 +50,7 @@ const MANUAL_ORDER_STATUSES = [
   "DELIVERED",
   "REJECTED",
   "CANCELLED",
+  "REFUNDED",
   "AUTO_FAILED",
 ] as const;
 type ManualOrderStatus = (typeof MANUAL_ORDER_STATUSES)[number];
@@ -163,11 +164,10 @@ export async function updateOrderStatusAction(formData: FormData) {
   const session = await requireStaff();
 
   const orderId = String(formData.get("orderId"));
-  // REFUNDED is deliberately absent: it means money went back to the buyer, so
-  // it is only ever set by refundOrderToWallet alongside the actual payout.
-  // Letting it be picked here would let an order claim it was refunded when
-  // nothing was paid. The value is checked rather than cast because it arrives
-  // straight from a form field.
+  // Picking REFUNDED is a request to actually refund, not just a relabelling:
+  // the payout below runs in the same submit, so the status can never claim
+  // money went back without it going back. The value is checked rather than
+  // cast because it arrives straight from a form field.
   const rawStatus = String(formData.get("status"));
   if (!MANUAL_ORDER_STATUSES.includes(rawStatus as ManualOrderStatus)) {
     throw new Error("এই স্ট্যাটাসটি এখান থেকে সেট করা যাবে না।");
@@ -196,11 +196,12 @@ export async function updateOrderStatusAction(formData: FormData) {
       const enteringDelivered = status === "DELIVERED" && current.status !== "DELIVERED";
       const noteChanged =
         adminNote.trim().length > 0 && adminNote.trim() !== (current.adminNote ?? "").trim();
-      // REFUNDED counts as already-undone here: a refunded order was cancelled
-      // once already, so re-cancelling it must not restore its stock or release
-      // its codes a second time.
+      // Refunding undoes an order just as cancelling does, so it releases the
+      // stock unit and any claimed codes too. An order already in one of these
+      // states has been undone once — going from CANCELLED to REFUNDED must not
+      // hand its stock back a second time.
       const enteringCancelledOrRejected =
-        (status === "REJECTED" || status === "CANCELLED") &&
+        (status === "REJECTED" || status === "CANCELLED" || status === "REFUNDED") &&
         current.status !== "REJECTED" &&
         current.status !== "CANCELLED" &&
         current.status !== "REFUNDED";
@@ -267,16 +268,18 @@ export async function updateOrderStatusAction(formData: FormData) {
       });
     }
 
-    // Auto-refund a wallet-paid order being rejected/cancelled: the money
-    // provably came out of the wallet, so it goes straight back. Manually paid
-    // orders (bKash/Nagad/Rocket) are deliberately left to the admin's explicit
-    // Refund action instead — a rejection there often means the customer never
-    // really paid, and auto-crediting those would hand out free balance.
+    // Two ways money goes back here. Picking REFUNDED is the admin saying so
+    // outright, for any payment method — that is the whole point of the status.
+    // Rejecting or cancelling a WALLET order refunds on its own, since the money
+    // provably came out of the wallet; manually paid orders are left alone there,
+    // because a rejection usually means the customer never really paid and
+    // auto-crediting those would hand out free balance.
     // refundOrderToWallet no-ops if this order was refunded once already.
-    const refunded =
-      order.paymentMethod === "WALLET" && enteringCancelledOrRejected
-        ? (await refundOrderToWallet(tx, order, session.user.id)) !== null
-        : false;
+    const shouldRefund =
+      status === "REFUNDED" || (order.paymentMethod === "WALLET" && enteringCancelledOrRejected);
+    const refunded = shouldRefund
+      ? (await refundOrderToWallet(tx, order, session.user.id)) !== null
+      : false;
 
     // Referral bonuses and in-app notifications only apply to orders placed by
     // a registered user — guest orders have no account to credit or notify.
@@ -314,7 +317,7 @@ export async function updateOrderStatusAction(formData: FormData) {
           actorId: session.user.id,
           type: "ORDER_NOTE",
           message: refunded
-            ? `আপনার অর্ডার ${formatOrderNumber(order.orderSerial)} বাতিল করা হয়েছে। ৳${order.amount} আপনার ওয়ালেটে ফেরত দেওয়া হয়েছে।`
+            ? `আপনার অর্ডার ${formatOrderNumber(order.orderSerial)} এর ৳${order.amount} আপনার ওয়ালেটে ফেরত দেওয়া হয়েছে।`
             : `আপনার অর্ডার ${formatOrderNumber(order.orderSerial)} বাতিল করা হয়েছে।`,
           link: "/dashboard/orders",
         });
