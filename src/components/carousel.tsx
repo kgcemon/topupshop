@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 type Slide = { id: number; image: string; link?: string | null };
 
@@ -28,25 +29,29 @@ export function Carousel({ slides }: { slides: Slide[] }) {
           >
             {slides.map((slide) => {
               const isFirst = slide.id === slides[0].id;
+              const href = slide.link?.trim() || null;
+              const image = (
+                <Image
+                  src={slide.image}
+                  alt="Banner"
+                  fill
+                  sizes="(min-width: 768px) 1200px, 100vw"
+                  // `priority` was deprecated in Next.js 16 in favor of `preload`
+                  // — and unlike the old `priority` prop, neither `preload` nor
+                  // `priority` auto-sets `fetchPriority` anymore, so it has to be
+                  // passed explicitly for the LCP image to actually get
+                  // fetchpriority="high" in the rendered HTML.
+                  preload={isFirst}
+                  fetchPriority={isFirst ? "high" : undefined}
+                  className="object-cover"
+                />
+              );
               return (
                 <div
                   key={slide.id}
                   className="relative aspect-[21/9] w-full shrink-0 md:aspect-auto md:h-[340px]"
                 >
-                  <Image
-                    src={slide.image}
-                    alt="Banner"
-                    fill
-                    sizes="(min-width: 768px) 1200px, 100vw"
-                    // `priority` was deprecated in Next.js 16 in favor of `preload`
-                    // — and unlike the old `priority` prop, neither `preload` nor
-                    // `priority` auto-sets `fetchPriority` anymore, so it has to be
-                    // passed explicitly for the LCP image to actually get
-                    // fetchpriority="high" in the rendered HTML.
-                    preload={isFirst}
-                    fetchPriority={isFirst ? "high" : undefined}
-                    className="object-cover"
-                  />
+                  {href ? <SlideLink href={href}>{image}</SlideLink> : image}
                 </div>
               );
             })}
@@ -69,5 +74,27 @@ export function Carousel({ slides }: { slides: Slide[] }) {
         )}
       </div>
     </div>
+  );
+}
+
+// A banner's link is admin-typed, so it can be either an in-app path
+// ("/topup/3/uid-topup") or a full external URL. Next's Link only handles the
+// former; sending an external URL through it would try a client-side
+// navigation to a route that doesn't exist.
+function SlideLink({ href, children }: { href: string; children: React.ReactNode }) {
+  const isInternal = href.startsWith("/");
+
+  if (isInternal) {
+    return (
+      <Link href={href} className="absolute inset-0 block">
+        {children}
+      </Link>
+    );
+  }
+
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="absolute inset-0 block">
+      {children}
+    </a>
   );
 }
