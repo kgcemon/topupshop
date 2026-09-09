@@ -20,6 +20,7 @@ const STATUS_COLORS: Record<string, string> = {
   DELIVERED: "#16a34a",
   REJECTED: "#dc2626",
   CANCELLED: "#9ca3af",
+  REFUNDED: "#d97706",
   AUTO_FAILED: "#e11d48",
 };
 

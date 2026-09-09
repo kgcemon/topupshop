@@ -21,7 +21,7 @@ export async function deliverOrder(orderId: string): Promise<boolean> {
   });
 
   const claimed = await prisma.order.updateMany({
-    where: { id: orderId, status: { not: "DELIVERED" } },
+    where: { id: orderId, status: { notIn: ["DELIVERED", "REFUNDED"] } },
     data: { status: "DELIVERED" },
   });
   if (claimed.count === 0) return false;

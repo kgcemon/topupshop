@@ -173,7 +173,7 @@ export async function getAnalyticsData(range: AnalyticsRange): Promise<Analytics
 
   const totalOrders = currentOrders.length;
   const rejectedOrCancelled = currentOrders.filter(
-    (o) => o.status === "REJECTED" || o.status === "CANCELLED"
+    (o) => o.status === "REJECTED" || o.status === "CANCELLED" || o.status === "REFUNDED"
   ).length;
   const autoFailed = currentOrders.filter((o) => o.status === "AUTO_FAILED").length;
   const [pendingOrders, pendingWalletRequests] = liveBacklog;

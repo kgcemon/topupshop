@@ -42,6 +42,18 @@ async function requireStaff() {
   return session;
 }
 
+// Statuses an admin may set from the order list by hand.
+const MANUAL_ORDER_STATUSES = [
+  "PENDING",
+  "APPROVED",
+  "RUNNING",
+  "DELIVERED",
+  "REJECTED",
+  "CANCELLED",
+  "AUTO_FAILED",
+] as const;
+type ManualOrderStatus = (typeof MANUAL_ORDER_STATUSES)[number];
+
 /**
  * Credits an order's amount back to the buyer's wallet — at most once, ever.
  *
@@ -64,7 +76,7 @@ async function refundOrderToWallet(
 
   const claimed = await tx.order.updateMany({
     where: { id: order.id, refundedAt: null },
-    data: { refundedAt: new Date(), refundedAmount: order.amount },
+    data: { refundedAt: new Date(), refundedAmount: order.amount, status: "REFUNDED" },
   });
   if (claimed.count === 0) return null;
 
@@ -151,13 +163,16 @@ export async function updateOrderStatusAction(formData: FormData) {
   const session = await requireStaff();
 
   const orderId = String(formData.get("orderId"));
-  const status = String(formData.get("status")) as
-    | "APPROVED"
-    | "RUNNING"
-    | "REJECTED"
-    | "DELIVERED"
-    | "CANCELLED"
-    | "AUTO_FAILED";
+  // REFUNDED is deliberately absent: it means money went back to the buyer, so
+  // it is only ever set by refundOrderToWallet alongside the actual payout.
+  // Letting it be picked here would let an order claim it was refunded when
+  // nothing was paid. The value is checked rather than cast because it arrives
+  // straight from a form field.
+  const rawStatus = String(formData.get("status"));
+  if (!MANUAL_ORDER_STATUSES.includes(rawStatus as ManualOrderStatus)) {
+    throw new Error("এই স্ট্যাটাসটি এখান থেকে সেট করা যাবে না।");
+  }
+  const status = rawStatus as ManualOrderStatus;
   const adminNote = String(formData.get("adminNote") || "");
   const redirectStatus = String(formData.get("redirectStatus") || "ALL");
   const redirectQuery = String(formData.get("redirectQuery") || "");
@@ -181,10 +196,14 @@ export async function updateOrderStatusAction(formData: FormData) {
       const enteringDelivered = status === "DELIVERED" && current.status !== "DELIVERED";
       const noteChanged =
         adminNote.trim().length > 0 && adminNote.trim() !== (current.adminNote ?? "").trim();
+      // REFUNDED counts as already-undone here: a refunded order was cancelled
+      // once already, so re-cancelling it must not restore its stock or release
+      // its codes a second time.
       const enteringCancelledOrRejected =
         (status === "REJECTED" || status === "CANCELLED") &&
         current.status !== "REJECTED" &&
-        current.status !== "CANCELLED";
+        current.status !== "CANCELLED" &&
+        current.status !== "REFUNDED";
 
       // Atomically claim the transition: only succeeds if the order's status is still
       // what we just read. Under InnoDB, this UPDATE re-checks the WHERE clause against

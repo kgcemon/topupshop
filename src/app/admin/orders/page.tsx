@@ -13,6 +13,7 @@ const STATUS_FILTERS = [
   "DELIVERED",
   "REJECTED",
   "CANCELLED",
+  "REFUNDED",
 ] as const;
 const PAGE_SIZE = 20;
 

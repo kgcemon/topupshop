@@ -207,6 +207,7 @@ enum OrderStatus {
   REJECTED
   DELIVERED
   CANCELLED
+  REFUNDED // money returned to the buyer's wallet — set only by the refund path, never by hand
   AUTO_FAILED // vendor callback (Shell/UniPin) reported status "failed" — set automatically, never by an admin; still retryable by resubmitting APPROVED
 }
 
