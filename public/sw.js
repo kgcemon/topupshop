@@ -1,47 +1,27 @@
-const CACHE_NAME = "topupshop-static-v1";
-const STATIC_PATH_PREFIXES = ["/_next/static/", "/icons/", "/images/", "/favicon.ico"];
-
+// Tombstone for the removed PWA service worker.
+//
+// Deleting this file outright would NOT have removed anything: a browser that
+// already registered the old worker only drops it if an update fetch succeeds
+// and the new script tells it to go away. A 404 aborts the update and leaves
+// the old worker installed — still intercepting fetches and still serving its
+// cache-first copies of /images/ and /favicon.ico, indefinitely.
+//
+// So this file stays, does the uninstall, and can be deleted once the visitors
+// who had the old worker have been back (a few weeks is plenty).
 self.addEventListener("install", () => {
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
-      .then(() => self.clients.claim())
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+      await self.registration.unregister();
+
+      // Reload open tabs so they stop being served by this worker.
+      const clients = await self.clients.matchAll({ type: "window" });
+      for (const client of clients) client.navigate(client.url);
+    })()
   );
-});
-
-function isStaticAsset(url) {
-  return STATIC_PATH_PREFIXES.some((prefix) => url.pathname.startsWith(prefix));
-}
-
-self.addEventListener("fetch", (event) => {
-  const { request } = event;
-  if (request.method !== "GET") return;
-
-  const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
-
-  if (isStaticAsset(url)) {
-    event.respondWith(
-      caches.open(CACHE_NAME).then(async (cache) => {
-        const cached = await cache.match(request);
-        const network = fetch(request)
-          .then((response) => {
-            if (response.ok) cache.put(request, response.clone());
-            return response;
-          })
-          .catch(() => cached);
-        return cached || network;
-      })
-    );
-    return;
-  }
-
-  if (request.mode === "navigate") {
-    event.respondWith(fetch(request).catch(() => caches.match(request)));
-  }
 });

@@ -10,8 +10,6 @@ import {
 import { NoticeBar } from "@/components/notice-bar";
 import { Carousel } from "@/components/carousel";
 import { ProductGrid } from "@/components/product-grid";
-import { InstallAppPopup } from "@/components/install-app-popup";
-import { DownloadAppButton } from "@/components/download-app-button";
 import { BlogPostCard } from "@/components/blog-post-card";
 import { SocialLinksRow } from "@/components/social-links-row";
 
@@ -74,7 +72,6 @@ export default async function HomePage() {
 
       <section className="container mx-auto md:mb-10">
         <div className="my-5 flex flex-nowrap items-center justify-center gap-2 sm:gap-4 md:my-10">
-          <DownloadAppButton />
           <a
             href="https://t.me/+3RexJMq7g0JmZDFl"
             target="_blank"
@@ -110,8 +107,6 @@ export default async function HomePage() {
           </div>
         </section>
       )}
-
-      <InstallAppPopup />
     </div>
   );
 }
