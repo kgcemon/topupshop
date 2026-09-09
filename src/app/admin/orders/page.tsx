@@ -22,7 +22,9 @@ export default async function AdminOrdersPage({
   searchParams: Promise<{ status?: string; q?: string; page?: string }>;
 }) {
   const session = await auth();
-  const canDelete = session?.user?.role === "ADMIN";
+  // Deleting orders and paying refunds out are both ADMIN-only; managers get
+  // the rest of the order tooling.
+  const isAdmin = session?.user?.role === "ADMIN";
 
   const { status, q, page } = await searchParams;
   const filter = STATUS_FILTERS.includes(status as (typeof STATUS_FILTERS)[number])
@@ -134,7 +136,8 @@ export default async function AdminOrdersPage({
         orders={orders}
         filter={filter}
         query={query}
-        canDelete={canDelete}
+        canDelete={isAdmin}
+        canRefund={isAdmin}
       />
 
       {totalPages > 1 && (

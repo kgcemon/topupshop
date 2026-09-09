@@ -5,7 +5,12 @@ import type { Prisma } from "@/generated/prisma/client";
 import { formatTaka, formatOrderNumber, formatDhakaDateTime } from "@/lib/utils";
 import { OrderStatusBadge } from "@/components/status-badge";
 import { CopyButton } from "@/components/copy-button";
-import { updateOrderStatusAction, deleteOrderAction, deleteOrdersAction } from "@/lib/actions/admin-actions";
+import {
+  updateOrderStatusAction,
+  deleteOrderAction,
+  deleteOrdersAction,
+  refundOrderAction,
+} from "@/lib/actions/admin-actions";
 
 export type AdminOrderListItem = Prisma.OrderGetPayload<{
   include: {
@@ -57,11 +62,13 @@ export function AdminOrderList({
   filter,
   query,
   canDelete,
+  canRefund,
 }: {
   orders: AdminOrderListItem[];
   filter: string;
   query: string;
   canDelete: boolean;
+  canRefund: boolean;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const selectAllRef = useRef<HTMLInputElement>(null);
@@ -144,6 +151,7 @@ export function AdminOrderList({
             selected={selected.has(order.id)}
             onToggleSelect={() => toggle(order.id)}
             canDelete={canDelete}
+            canRefund={canRefund}
           />
         ))}
       </div>
@@ -158,6 +166,7 @@ function OrderCard({
   selected,
   onToggleSelect,
   canDelete,
+  canRefund,
 }: {
   order: AdminOrderListItem;
   filter: string;
@@ -165,8 +174,17 @@ function OrderCard({
   selected: boolean;
   onToggleSelect: () => void;
   canDelete: boolean;
+  canRefund: boolean;
 }) {
   const [open, setOpen] = useState(false);
+
+  // Mirrors REFUNDABLE_STATUSES in admin-actions: the button only appears once
+  // the order is actually undone, and never a second time.
+  const refundable =
+    canRefund &&
+    !order.refundedAt &&
+    !!order.userId &&
+    (order.status === "REJECTED" || order.status === "CANCELLED" || order.status === "AUTO_FAILED");
 
   return (
     <div
@@ -476,6 +494,39 @@ function OrderCard({
                 Update
               </button>
             </form>
+
+            {order.refundedAt && (
+              <p className="mt-2 rounded-md bg-green-50 px-3 py-1.5 text-xs font-bold text-green-700">
+                ৳{formatTaka(order.refundedAmount ?? order.amount)} ওয়ালেটে রিফান্ড হয়েছে ·{" "}
+                {fmtDate(order.refundedAt)}
+              </p>
+            )}
+
+            {refundable && (
+              <form
+                action={refundOrderAction}
+                onSubmit={(e) => {
+                  if (
+                    !confirm(
+                      `অর্ডার ${formatOrderNumber(order.orderSerial)} এর ৳${formatTaka(order.amount)} ইউজারের ওয়ালেটে ফেরত দেবেন? এটি একবারই করা যাবে।`
+                    )
+                  ) {
+                    e.preventDefault();
+                  }
+                }}
+                className="mt-2"
+              >
+                <input type="hidden" name="orderId" value={order.id} />
+                <input type="hidden" name="redirectStatus" value={filter} />
+                <input type="hidden" name="redirectQuery" value={query} />
+                <button
+                  type="submit"
+                  className="w-full rounded-md border border-green-300 px-3 py-1.5 text-xs font-bold text-green-700 hover:bg-green-50 sm:w-auto"
+                >
+                  ৳{formatTaka(order.amount)} ওয়ালেটে রিফান্ড করুন
+                </button>
+              </form>
+            )}
 
             {canDelete && (
               <form

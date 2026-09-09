@@ -232,6 +232,14 @@ model Order {
 
   shellClaimedAt DateTime? // set atomically right before calling the Shell API for this order; guards against a second concurrent/retried call. Reset to null on failure so a legitimate retry can re-claim.
 
+  // Stamped the moment a refund is credited to the buyer's wallet, by either
+  // the automatic cancel/reject path or an admin's explicit Refund action.
+  // Claimed atomically (see refundOrderToWallet), so one order can only ever
+  // pay out once no matter how often it is cancelled, re-approved and
+  // cancelled again.
+  refundedAt     DateTime?
+  refundedAmount Int?
+
   user                User?           @relation(fields: [userId], references: [id])
   product             Product         @relation(fields: [productId], references: [id])
   rechargeOption      RechargeOption  @relation(fields: [rechargeOptionId], references: [id])

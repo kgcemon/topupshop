@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 import {
   blogPostFormSchema,
   productFormSchema,
@@ -39,6 +40,111 @@ async function requireStaff() {
     throw new Error("Unauthorized: admin or manager access required");
   }
   return session;
+}
+
+/**
+ * Credits an order's amount back to the buyer's wallet — at most once, ever.
+ *
+ * The conditional update on `refundedAt` is what makes that guarantee: an order
+ * that has already been refunded loses the claim and nothing is credited. That
+ * covers both ways a second payout could otherwise happen — cancelling an order,
+ * re-approving it and cancelling it again, or an admin pressing Refund on an
+ * order the automatic path already refunded.
+ *
+ * Returns the amount credited, or null when there was nothing to refund (a guest
+ * order, which has no wallet, or an already-refunded one). Must run inside a
+ * transaction so the claim, the balance and the ledger row commit together.
+ */
+async function refundOrderToWallet(
+  tx: Prisma.TransactionClient,
+  order: { id: string; userId: string | null; amount: number; orderSerial: number },
+  actorId: string
+): Promise<number | null> {
+  if (!order.userId) return null;
+
+  const claimed = await tx.order.updateMany({
+    where: { id: order.id, refundedAt: null },
+    data: { refundedAt: new Date(), refundedAmount: order.amount },
+  });
+  if (claimed.count === 0) return null;
+
+  await tx.user.update({
+    where: { id: order.userId },
+    data: { walletBalance: { increment: order.amount } },
+  });
+  await tx.walletTransaction.create({
+    data: {
+      userId: order.userId,
+      type: "REFUND",
+      method: "WALLET",
+      amount: order.amount,
+      status: "APPROVED",
+      note: `Refund for order ${formatOrderNumber(order.orderSerial)}`,
+      reviewedById: actorId,
+      reviewedAt: new Date(),
+    },
+  });
+
+  return order.amount;
+}
+
+// Statuses an order has to be in before it can be refunded by hand: it must
+// already be a failed/undone order. Refunding a live one would leave the
+// customer holding both the topup and the money, so cancel it first — which
+// refunds wallet-paid orders on its own anyway.
+const REFUNDABLE_STATUSES = ["REJECTED", "CANCELLED", "AUTO_FAILED"] as const;
+
+/**
+ * Admin-triggered refund, for orders the automatic path deliberately skips —
+ * chiefly manual bKash/Nagad/Rocket payments, where only the admin knows the
+ * money really arrived. Credits the buyer's wallet once and never again.
+ */
+export async function refundOrderAction(formData: FormData) {
+  // ADMIN only: managers may move orders through their statuses, but paying
+  // money out is not theirs to do.
+  const session = await requireAdmin();
+
+  const orderId = String(formData.get("orderId"));
+  const redirectStatus = String(formData.get("redirectStatus") || "ALL");
+  const redirectQuery = String(formData.get("redirectQuery") || "");
+
+  const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+
+  if (!order.userId) {
+    throw new Error("গেস্ট অর্ডারে কোনো ওয়ালেট নেই, তাই ওয়ালেটে রিফান্ড করা যাবে না।");
+  }
+  if (!REFUNDABLE_STATUSES.includes(order.status as (typeof REFUNDABLE_STATUSES)[number])) {
+    throw new Error("রিফান্ড করার আগে অর্ডারটি REJECTED, CANCELLED বা AUTO_FAILED করতে হবে।");
+  }
+
+  const refundedAmount = await prisma.$transaction(async (tx) => {
+    const amount = await refundOrderToWallet(tx, order, session.user.id);
+    if (amount === null) return null;
+
+    await createNotification(tx, {
+      userId: order.userId!,
+      actorId: session.user.id,
+      type: "ORDER_NOTE",
+      message: `আপনার অর্ডার ${formatOrderNumber(order.orderSerial)} এর ৳${amount} ওয়ালেটে ফেরত দেওয়া হয়েছে।`,
+      link: "/dashboard/orders",
+    });
+
+    return amount;
+  });
+
+  // Losing the claim means someone already refunded this order — say so rather
+  // than redirecting as if a second payout had gone through.
+  if (refundedAmount === null) {
+    throw new Error("এই অর্ডারটি আগেই রিফান্ড করা হয়েছে।");
+  }
+
+  revalidatePath("/admin/orders");
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/orders");
+
+  const params = new URLSearchParams({ status: redirectStatus });
+  if (redirectQuery) params.set("q", redirectQuery);
+  redirect(`/admin/orders?${params.toString()}`);
 }
 
 export async function updateOrderStatusAction(formData: FormData) {
@@ -115,7 +221,7 @@ export async function updateOrderStatusAction(formData: FormData) {
     });
   }
 
-  const { isRefundableRejection } = await prisma.$transaction(async (tx) => {
+  const { refunded } = await prisma.$transaction(async (tx) => {
     // Release any Unipin codes already claimed for this order back to stock —
     // covers rejecting/cancelling an order that had reached RUNNING. Clearing
     // redeemedAt too is essential: a recycled code with a stale redeemedAt
@@ -142,30 +248,16 @@ export async function updateOrderStatusAction(formData: FormData) {
       });
     }
 
-    // Refund the wallet if a wallet-paid order is being rejected/cancelled
-    // and it wasn't already in a refunded state. Guest orders (userId null)
-    // can never be WALLET-paid, so this never applies to them.
-    const isRefundableRejection =
-      order.paymentMethod === "WALLET" && enteringCancelledOrRejected;
-
-    if (order.userId && isRefundableRejection) {
-      await tx.user.update({
-        where: { id: order.userId },
-        data: { walletBalance: { increment: order.amount } },
-      });
-      await tx.walletTransaction.create({
-        data: {
-          userId: order.userId,
-          type: "REFUND",
-          method: "WALLET",
-          amount: order.amount,
-          status: "APPROVED",
-          note: `Refund for cancelled/rejected order ${formatOrderNumber(order.orderSerial)}`,
-          reviewedById: session.user.id,
-          reviewedAt: new Date(),
-        },
-      });
-    }
+    // Auto-refund a wallet-paid order being rejected/cancelled: the money
+    // provably came out of the wallet, so it goes straight back. Manually paid
+    // orders (bKash/Nagad/Rocket) are deliberately left to the admin's explicit
+    // Refund action instead — a rejection there often means the customer never
+    // really paid, and auto-crediting those would hand out free balance.
+    // refundOrderToWallet no-ops if this order was refunded once already.
+    const refunded =
+      order.paymentMethod === "WALLET" && enteringCancelledOrRejected
+        ? (await refundOrderToWallet(tx, order, session.user.id)) !== null
+        : false;
 
     // Referral bonuses and in-app notifications only apply to orders placed by
     // a registered user — guest orders have no account to credit or notify.
@@ -202,7 +294,7 @@ export async function updateOrderStatusAction(formData: FormData) {
           userId: order.userId,
           actorId: session.user.id,
           type: "ORDER_NOTE",
-          message: isRefundableRejection
+          message: refunded
             ? `আপনার অর্ডার ${formatOrderNumber(order.orderSerial)} বাতিল করা হয়েছে। ৳${order.amount} আপনার ওয়ালেটে ফেরত দেওয়া হয়েছে।`
             : `আপনার অর্ডার ${formatOrderNumber(order.orderSerial)} বাতিল করা হয়েছে।`,
           link: "/dashboard/orders",
@@ -210,7 +302,7 @@ export async function updateOrderStatusAction(formData: FormData) {
       }
     }
 
-    return { isRefundableRejection };
+    return { refunded };
   });
 
   // Best-effort, outside the transaction — mirrors processOrderFulfillment
@@ -226,7 +318,7 @@ export async function updateOrderStatusAction(formData: FormData) {
     await sendOrderCancelledEmail(order.user?.email, {
       orderNumber: formatOrderNumber(order.orderSerial),
       amount: order.amount,
-      refunded: isRefundableRejection,
+      refunded,
     });
   }
 
