@@ -61,7 +61,22 @@ export async function POST(request: Request) {
   });
 
   if (success) {
-    if (order.status !== "DELIVERED") {
+    // A multi-part recipe ("4,4") gets one callback per part, so count the
+    // confirmations instead of delivering on the first one — otherwise an order
+    // whose second part later failed would still look complete to the customer.
+    // The increment is atomic, so two callbacks arriving at once can't both
+    // read the same "one to go" and double-deliver.
+    const confirmed = await prisma.order.update({
+      where: { id: order.id },
+      data: { apiPartsDone: { increment: 1 } },
+      select: { apiPartsDone: true, apiPartsTotal: true },
+    });
+    // Orders from before part tracking have no total recorded; treat them as
+    // the single-part orders they were.
+    const partsTotal = confirmed.apiPartsTotal ?? 1;
+    const allPartsConfirmed = confirmed.apiPartsDone >= partsTotal;
+
+    if (allPartsConfirmed && order.status !== "DELIVERED") {
       await prisma.$transaction(async (tx) => {
         await tx.order.update({ where: { id: order.id }, data: { status: "DELIVERED" } });
 
@@ -96,9 +111,22 @@ export async function POST(request: Request) {
     // Marking AUTO_FAILED (rather than leaving status untouched) surfaces the
     // failure to admins immediately via the AUTO FAILED tab — still retryable,
     // since resubmitting APPROVED only checks for RUNNING/DELIVERED.
+    // Rewind the resume point to what the vendor actually confirmed: parts it
+    // acknowledged stay done and are never re-sent, while anything sent but
+    // unconfirmed is retried by the next approval. Releasing the claim is what
+    // lets that retry happen at all.
+    const failed = await prisma.order.findUniqueOrThrow({
+      where: { id: order.id },
+      select: { apiPartsDone: true },
+    });
     await prisma.order.update({
       where: { id: order.id },
-      data: { status: "AUTO_FAILED", adminNote: errorMessage, shellClaimedAt: null },
+      data: {
+        status: "AUTO_FAILED",
+        adminNote: errorMessage,
+        apiClaimedAt: null,
+        apiPartsSent: failed.apiPartsDone,
+      },
     });
     await notifyAdmins(prisma, {
       type: "ORDER_FULFILLMENT_ISSUE",

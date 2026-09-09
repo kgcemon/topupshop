@@ -58,6 +58,7 @@ export async function callShellApi(params: {
       orderId: params.orderId,
       apiSettingId: params.apiSettingId,
       deliveryMethod: "SHELL",
+      denom: params.denom ?? undefined,
       requestBody,
       errorMessage: message,
       success: false,
@@ -78,6 +79,9 @@ export async function callShellApi(params: {
     orderId: params.orderId,
     apiSettingId: params.apiSettingId,
     deliveryMethod: "SHELL",
+    // Which entry of the denom recipe this call was for — the only thing that
+    // tells two rows of a "4,4" order apart in the admin log.
+    denom: params.denom ?? undefined,
     requestBody,
     responseBody: text,
     statusCode: response.status,

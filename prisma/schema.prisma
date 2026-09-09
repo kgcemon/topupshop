@@ -230,7 +230,19 @@ model Order {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  shellClaimedAt DateTime? // set atomically right before calling the Shell API for this order; guards against a second concurrent/retried call. Reset to null on failure so a legitimate retry can re-claim.
+  // Set atomically right before calling an external delivery API for this
+  // order; guards against a second concurrent/retried call. Reset to null on
+  // failure so a legitimate retry can re-claim. Shared by every API-backed
+  // delivery method — an order has exactly one, so they never collide.
+  apiClaimedAt DateTime?
+
+  // A denom recipe can list the same package more than once ("4,4",
+  // "LITE,LITE") and the vendor takes one API call per entry. These track that
+  // sequence so a retry resumes at the first unsent part instead of
+  // re-sending — and paying for — one the vendor already accepted.
+  apiPartsTotal Int? // parts this recipe needs; null until the first dispatch, which is also how pre-existing orders are recognised
+  apiPartsSent  Int  @default(0) // parts the vendor accepted
+  apiPartsDone  Int  @default(0) // parts the vendor confirmed via callback
 
   // Stamped the moment a refund is credited to the buyer's wallet, by either
   // the automatic cancel/reject path or an admin's explicit Refund action.
