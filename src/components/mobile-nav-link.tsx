@@ -6,10 +6,13 @@ import { usePathname } from "next/navigation";
 export function MobileNavLink({
   href,
   label,
+  featured = false,
   children,
 }: {
   href: string;
   label: string;
+  /** Raises the icon into a filled circle above the bar — for the one primary action. */
+  featured?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -21,13 +24,31 @@ export function MobileNavLink({
   return (
     <Link
       href={href}
+      aria-label={label}
       aria-current={isActive ? "page" : undefined}
-      className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-semibold ${
-        isActive ? "text-primary-600" : "text-gray-500 hover:text-primary-600"
+      className={`relative z-[1] flex h-[50px] min-w-0 flex-col items-center justify-start gap-1 pt-px text-center transition-colors ${
+        isActive ? "text-primary-600" : "text-[#5f6977] hover:text-primary-600"
       }`}
     >
-      {children}
-      <span className="max-w-full truncate px-1">{label}</span>
+      <span
+        className={
+          featured
+            ? // Lifted clear of the bar, so it reads as the primary action rather
+              // than one tab among five. The white ring is what separates the
+              // circle from the bar it overlaps.
+              "absolute -top-[33px] left-1/2 box-border flex h-[60px] w-[60px] -translate-x-1/2 items-center justify-center rounded-full border-4 border-white bg-primary-500 text-white shadow-[0_-3px_10px_rgba(15,23,42,0.12)]"
+            : "inline-flex h-[29px] w-[29px] items-center justify-center"
+        }
+      >
+        {children}
+      </span>
+      <span
+        className={`absolute inset-x-0 bottom-[5px] mx-auto truncate text-[11px] font-semibold leading-[1.05] ${
+          featured ? `max-w-[82px] ${isActive ? "" : "text-slate-500"}` : "max-w-[72px]"
+        }`}
+      >
+        {label}
+      </span>
     </Link>
   );
 }

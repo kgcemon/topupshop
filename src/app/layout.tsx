@@ -109,7 +109,7 @@ export default async function RootLayout({
       className={`${bodyFont.variable} ${headingFont.variable} h-full antialiased`}
     >
       <body
-        className="min-h-full flex flex-col font-sans text-gray-800 pb-16 md:pb-0"
+        className="min-h-full flex flex-col font-sans text-gray-800 pb-20 md:pb-0"
         suppressHydrationWarning
       >
         <script
