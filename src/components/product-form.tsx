@@ -15,6 +15,7 @@ type ProductFormValues = {
   category?: string;
   description?: string | null;
   inputLabel?: string | null;
+  nameCheckEnabled?: boolean;
   rules?: string[];
   isActive?: boolean;
   stockOut?: boolean;
@@ -179,6 +180,22 @@ export function ProductForm({
             Stock Out
           </label>
         </div>
+        <label className="flex items-start gap-2 text-sm font-semibold">
+          <input
+            type="checkbox"
+            name="nameCheckEnabled"
+            defaultChecked={defaultValues?.nameCheckEnabled ?? false}
+            className="mt-1"
+          />
+          <span>
+            <span className="block">Name Check</span>
+            <span className="mt-0.5 block text-xs font-normal text-gray-500">
+              চালু করলে এই প্রোডাক্টের Player ID ঘরের নিচে গেম আইডির নাম দেখাবে, যাতে কাস্টমার
+              পেমেন্টের আগেই আইডি ঠিক আছে কিনা মিলিয়ে নিতে পারে। এর জন্য API Settings-এ
+              &ldquo;FF Name Check&rdquo; কনফিগার করা থাকতে হবে।
+            </span>
+          </span>
+        </label>
       </div>
 
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}

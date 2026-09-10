@@ -11,6 +11,7 @@ const TYPE_LABELS: Record<string, string> = {
   UNIPIN: "Unipin",
   SHELL: "Shell (New)",
   FFLIKES: "FF Likes (UcBot)",
+  FFNAME: "FF Name Check (UcBot)",
   GARENA_SHELL: "Garena Shell",
   OTHER: "Other",
 };
@@ -38,6 +39,7 @@ export default async function AdminApiSettingsPage() {
               <option value="UNIPIN">Unipin</option>
               <option value="SHELL">Shell (New)</option>
               <option value="FFLIKES">FF Likes (UcBot)</option>
+              <option value="FFNAME">FF Name Check (UcBot)</option>
               <option value="GARENA_SHELL">Garena Shell</option>
               <option value="OTHER">Other</option>
             </select>
@@ -151,6 +153,7 @@ export default async function AdminApiSettingsPage() {
                     <option value="UNIPIN">Unipin</option>
                     <option value="SHELL">Shell (New)</option>
                     <option value="FFLIKES">FF Likes (UcBot)</option>
+                    <option value="FFNAME">FF Name Check (UcBot)</option>
                     <option value="GARENA_SHELL">Garena Shell</option>
                     <option value="OTHER">Other</option>
                   </select>

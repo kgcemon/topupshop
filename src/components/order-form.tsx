@@ -9,6 +9,7 @@ import { formatTaka, formatOrderNumber, formatDhakaDateTime } from "@/lib/utils"
 import { OrderStatusBadge } from "@/components/status-badge";
 import { PaymentNumberCard } from "@/components/payment-number-card";
 import { WhatsappLink, WhatsAppIcon } from "@/components/whatsapp-link";
+import { PlayerNameCheck } from "@/components/player-name-check";
 
 type RechargeOption = { id: number; label: string; price: number; stock: number | null };
 
@@ -34,6 +35,7 @@ export function OrderForm({
   stockOut,
   allowGuestOrders,
   depositEnabled,
+  nameCheckEnabled,
   whatsappNumber,
 }: {
   productId: number;
@@ -46,6 +48,7 @@ export function OrderForm({
   stockOut: boolean;
   allowGuestOrders: boolean;
   depositEnabled: boolean;
+  nameCheckEnabled: boolean;
   whatsappNumber: string;
 }) {
   const playerIdLabel = inputLabel?.trim() || "এখানে প্লেয়ার আইডি কোড দিন";
@@ -240,6 +243,7 @@ export function OrderForm({
               placeholder={playerIdLabel}
               className="mb-3 w-full rounded-md border border-gray-300 p-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
+            {nameCheckEnabled && <PlayerNameCheck productId={productId} inputId="playerId" />}
             {state.fieldErrors?.playerId && (
               <p className="mb-3 -mt-2 text-sm text-red-600">{state.fieldErrors.playerId}</p>
             )}

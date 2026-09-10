@@ -14,7 +14,7 @@ async function requireAdmin() {
 
 // Must list every ApiSettingType the form offers: anything missing here is
 // silently coerced to OTHER on save, which then matches no provider lookup.
-const API_SETTING_TYPES = ["UNIPIN", "SHELL", "FFLIKES", "GARENA_SHELL", "OTHER"] as const;
+const API_SETTING_TYPES = ["UNIPIN", "SHELL", "FFLIKES", "FFNAME", "GARENA_SHELL", "OTHER"] as const;
 
 function parseApiSettingForm(formData: FormData) {
   const name = String(formData.get("name") || "").trim();

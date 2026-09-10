@@ -647,6 +647,7 @@ function parseProductForm(formData: FormData, resolvedImage: string) {
     category: formData.get("category"),
     description: formData.get("description") || "",
     inputLabel: formData.get("inputLabel") || "",
+    nameCheckEnabled: formData.get("nameCheckEnabled") === "on",
     isActive: formData.get("isActive") === "on",
     stockOut: formData.get("stockOut") === "on",
     sortOrder: formData.get("sortOrder") || 0,

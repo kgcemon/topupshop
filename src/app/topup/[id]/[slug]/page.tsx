@@ -178,6 +178,7 @@ export default async function TopupProductPage({
         stockOut={product.stockOut}
         allowGuestOrders={settings.allowGuestOrders}
         depositEnabled={settings.depositEnabled}
+        nameCheckEnabled={product.nameCheckEnabled}
         whatsappNumber={settings.whatsappNumber}
         paymentNumbers={{
           bkashNumber: settings.bkashNumber,

@@ -155,6 +155,7 @@ model Product {
   description String?     @db.Text
   rules       Json? // string[]
   inputLabel  String? // overrides the checkout "Player ID" field label/placeholder for this product; null = default label
+  nameCheckEnabled Boolean @default(false) // shows the "check your in-game name" lookup under this product's player-id field
   isActive    Boolean     @default(true)
   stockOut    Boolean     @default(false)
   sortOrder   Int         @default(0)
@@ -304,6 +305,7 @@ enum ApiSettingType {
   GARENA_SHELL // legacy/unused value, unrelated to the Shell delivery method below — do not repurpose. Kept for the separate manual GarenaShellAccount vault feature.
   SHELL // automatable Shell top-up API config, used only by orders with RechargeOption.deliveryMethod = SHELL. Fully separate from GARENA_SHELL and from UNIPIN.
   FFLIKES // UcBot FF Likes: apiKey = api_key, endpoint = base URL (default https://fflikes.ucbot.net), code = server_name (default BD)
+  FFNAME // UcBot FF nickname lookup: apiKey = Authorization header value, endpoint = base URL (default https://ffapi.ucbot.net)
   OTHER
 }
 
