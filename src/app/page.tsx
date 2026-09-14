@@ -14,9 +14,9 @@ import { BlogPostCard } from "@/components/blog-post-card";
 import { SocialLinksRow } from "@/components/social-links-row";
 
 export const metadata: Metadata = {
-  title: "topupshop.co - Free Fire Diamond TopUp | Largest TopUp Site In Bangladesh",
+  title: "topupshop.co - Diamond & Membership TopUp | Largest TopUp Site In Bangladesh",
   description:
-    "সবচেয়ে কম দামে ও দ্রুততম সময়ে Free Fire Diamond TopUp, UID TopUp, Weekly/Monthly Membership এবং Level Up Pass কিনুন। bKash, Nagad, Rocket পেমেন্টে ২৪ ঘন্টা অটোমেটিক ডেলিভারি।",
+    "সবচেয়ে কম দামে ও দ্রুততম সময়ে গেম Diamond TopUp, UID TopUp, Weekly/Monthly Membership এবং Level Up Pass কিনুন। bKash, Nagad, Rocket পেমেন্টে ২৪ ঘন্টা অটোমেটিক ডেলিভারি।",
   alternates: { canonical: "/" },
 };
 

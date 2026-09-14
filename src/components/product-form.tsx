@@ -128,7 +128,7 @@ export function ProductForm({
       <TextField
         label="Category"
         name="category"
-        defaultValue={defaultValues?.category ?? "Free Fire"}
+        defaultValue={defaultValues?.category ?? "Diamond Top-Up"}
         error={state.fieldErrors?.category}
       />
 

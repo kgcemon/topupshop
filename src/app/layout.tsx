@@ -26,13 +26,13 @@ export const viewport: Viewport = {
 };
 
 const DEFAULT_DESCRIPTION =
-  "topupshop.co থেকে সবচেয়ে দ্রুত ও নিরাপদভাবে Free Fire Diamond TopUp করুন। UID Topup, Weekly/Monthly Membership, Level Up Pass — ২৪ ঘন্টা সার্ভিস।";
+  "topupshop.co থেকে সবচেয়ে দ্রুত ও নিরাপদভাবে গেম Diamond TopUp করুন। UID Topup, Weekly/Monthly Membership, Level Up Pass — ২৪ ঘন্টা সার্ভিস।";
 const DEFAULT_KEYWORDS = [
-  "Free Fire Topup",
-  "Free Fire Diamond",
+  "Diamond Topup",
+  "Game Topup BD",
   "topupshop.co",
-  "Free Fire BD Server Topup",
-  "Free Fire Membership",
+  "UID Topup BD Server",
+  "Weekly Monthly Membership",
   "Bangladesh Topup Site",
 ];
 

@@ -142,7 +142,7 @@ export function SiteSettingsForm({ defaultValues }: { defaultValues: SiteSetting
           label="Meta Keywords (কমা দিয়ে আলাদা করুন)"
           name="metaKeywords"
           defaultValue={defaultValues.metaKeywords ?? ""}
-          placeholder="free fire topup, topupshop, diamond topup bd"
+          placeholder="diamond topup, topupshop, uid topup bd"
           error={state.fieldErrors?.metaKeywords}
         />
         <div>

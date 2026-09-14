@@ -48,7 +48,7 @@ export function SiteFooter({ settings }: { settings: Settings }) {
                   className="h-auto w-36"
                 />
               </span>
-              <p className="mt-4 font-primary text-lg text-white">Free Fire Diamond TopUp</p>
+              <p className="mt-4 font-primary text-lg text-white">Game Diamond &amp; Membership Top-Up</p>
               <p className="text-sm text-[#bbb8b8]">{settings.tagline}</p>
             </div>
 
@@ -138,6 +138,14 @@ export function SiteFooter({ settings }: { settings: Settings }) {
               </Link>
             ))}
           </nav>
+          {/* Trademark disclaimer — we are an independent reseller, so the
+              publisher's marks must never read as our own branding. */}
+          <p className="mb-3 max-w-[900px] text-center text-xs leading-relaxed text-[#9a9a9a]">
+            Disclaimer: {settings.siteName} is an independent top-up reseller and is not affiliated with,
+            endorsed by, or sponsored by Garena, Sea Group, Shopee or any game publisher. All game names,
+            logos and trademarks are the property of their respective owners and are used only to
+            describe the products we resell.
+          </p>
           <div className="mt-2 text-center font-primary tracking-wide">
             © {settings.siteName} {new Date().getFullYear()} | All Rights Reserved | Developed By{" "}
             <a

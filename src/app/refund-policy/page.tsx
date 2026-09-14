@@ -14,7 +14,7 @@ export default async function RefundPolicyPage() {
   return (
     <LegalPage title="Refund & Cancellation Policy" updatedAt="১ আগস্ট, ২০২৬">
       <p>
-        Free Fire Diamond, Membership এবং Level Up Pass ডিজিটাল পণ্য — অর্ডার সফলভাবে ডেলিভার হয়ে গেলে তা আর
+        Diamond, Membership এবং Level Up Pass ডিজিটাল পণ্য — অর্ডার সফলভাবে ডেলিভার হয়ে গেলে তা আর
         ফেরত নেওয়া বা বাতিল করা সম্ভব নয়। অর্ডার করার আগে অনুগ্রহ করে আপনার Player ID এবং প্যাকেজ দুইবার
         যাচাই করে নিন।
       </p>

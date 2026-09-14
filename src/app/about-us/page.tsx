@@ -5,7 +5,7 @@ import { LegalPage } from "@/components/legal-page";
 export const metadata: Metadata = {
   title: "About Us",
   description:
-    "topupshop.co হলো বাংলাদেশের অন্যতম বিশ্বস্ত Free Fire Diamond TopUp প্ল্যাটফর্ম — দ্রুত ডেলিভারি, নিরাপদ পেমেন্ট এবং ২৪ ঘন্টা সাপোর্ট নিয়ে আমরা কাজ করছি।",
+    "topupshop.co হলো বাংলাদেশের অন্যতম বিশ্বস্ত গেম Diamond TopUp প্ল্যাটফর্ম — দ্রুত ডেলিভারি, নিরাপদ পেমেন্ট এবং ২৪ ঘন্টা সাপোর্ট নিয়ে আমরা কাজ করছি।",
   alternates: { canonical: "/about-us" },
 };
 
@@ -16,7 +16,7 @@ export default async function AboutUsPage() {
     <LegalPage title="About Us">
       <p>
         <strong>{settings.siteName}</strong> ({settings.tagline}) বাংলাদেশের গেমারদের জন্য একটি নির্ভরযোগ্য অনলাইন
-        টপ-আপ প্ল্যাটফর্ম, যেখান থেকে আপনি সহজে ও নিরাপদে Free Fire UID Diamond TopUp, Weekly/Monthly Membership এবং
+        টপ-আপ প্ল্যাটফর্ম, যেখান থেকে আপনি সহজে ও নিরাপদে UID Diamond TopUp, Weekly/Monthly Membership এবং
         Level Up Pass কিনতে পারেন।
       </p>
       <p>
@@ -32,6 +32,13 @@ export default async function AboutUsPage() {
         <li>রেফারেল প্রোগ্রামের মাধ্যমে বন্ধুদের রেফার করে বোনাস আয়ের সুযোগ</li>
         <li>{settings.whatsappNumber} নাম্বারে সকাল ৮টা থেকে রাত ১২টা পর্যন্ত লাইভ সাপোর্ট</li>
       </ul>
+
+      <h2>স্বাধীন রিসেলার ঘোষণা</h2>
+      <p>
+        {settings.siteName} একটি স্বাধীন থার্ড-পার্টি টপ-আপ রিসেলার — আমরা Garena, Sea Group, Shopee বা কোনো
+        গেম পাবলিশারের অফিসিয়াল সাইট নই এবং তাদের সাথে আমাদের কোনো অংশীদারিত্ব বা অনুমোদন নেই। গেমের নাম,
+        লোগো ও ট্রেডমার্ক তাদের নিজ নিজ মালিকের সম্পত্তি।
+      </p>
 
       <h2>যোগাযোগ</h2>
       <p>

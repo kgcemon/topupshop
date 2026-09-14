@@ -55,9 +55,9 @@ async function main() {
     create: { name: "Special Offer", slug: "special-offer", sortOrder: 0, isActive: true },
   });
   const freeFireSection = await prisma.section.upsert({
-    where: { slug: "free-fire" },
+    where: { slug: "diamond-topup" },
     update: {},
-    create: { name: "Free Fire", slug: "free-fire", sortOrder: 1, isActive: true },
+    create: { name: "Diamond Top-Up", slug: "diamond-topup", sortOrder: 1, isActive: true },
   });
 
   console.log("Seeding products...");
@@ -145,12 +145,12 @@ async function main() {
       options: [{ label: "Weekly Lite", price: 79, sortOrder: 1 }],
     },
     {
-      name: "Free Fire Uid Topup [Indonesia]",
-      slug: "free-fire-uid-topup-indonesia",
+      name: "Uid Topup [Indonesia]",
+      slug: "uid-topup-indonesia",
       image: "/images/product_indonesia.jpg",
       sectionId: freeFireSection.id,
       type: "NORMAL" as const,
-      category: "Free Fire",
+      category: "Diamond Top-Up",
       sortOrder: 5,
       rules: [
         "শুধুমাত্র Indonesia সার্ভারের ID Code দিয়ে টপ আপ হবে।",
