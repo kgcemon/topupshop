@@ -271,3 +271,470 @@ html {
   box-shadow: 0 8px 22px color-mix(in srgb, var(--site-color) 16%, transparent);
 }
 
+/* ---- Recent orders feed (home page) --------------------------------- */
+/* Accent follows the brand colour; everything else is the card's own ink. */
+.latest-orders-section {
+  --orders-accent: var(--site-color);
+  --orders-ink: #081129;
+  --orders-muted: #50607a;
+  --orders-line: #e7ebf2;
+}
+
+.latest-orders-card {
+  overflow: hidden;
+  border: 1px solid rgba(229, 234, 242, 0.92);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 6% 2%, color-mix(in srgb, var(--orders-accent) 4%, transparent), transparent 32%),
+    radial-gradient(circle at 92% 0, rgba(148, 163, 184, 0.08), transparent 30%),
+    linear-gradient(#fff, #fff 55%, #fbfdff);
+  box-shadow:
+    0 28px 90px rgba(15, 23, 42, 0.075),
+    inset 0 2px rgba(255, 255, 255, 0.88);
+}
+
+.latest-orders-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 112px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--orders-line);
+}
+
+/* Short accent bar riding the header's bottom edge. */
+.latest-orders-header::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 24px;
+  width: 96px;
+  height: 5px;
+  border-radius: 999px 999px 0 0;
+  background: linear-gradient(90deg, var(--orders-accent), color-mix(in srgb, var(--orders-accent) 70%, #fff));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--orders-accent) 22%, transparent);
+}
+
+.latest-orders-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+.latest-orders-icon {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  border: 1px solid color-mix(in srgb, var(--orders-accent) 4%, transparent);
+  border-radius: 25px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--orders-accent) 6%, #fff),
+    color-mix(in srgb, var(--orders-accent) 12%, #fff)
+  );
+  box-shadow: 0 18px 40px color-mix(in srgb, var(--orders-accent) 8%, transparent);
+  color: var(--orders-accent);
+}
+
+.latest-orders-icon svg {
+  width: 36px;
+  height: 36px;
+}
+
+.latest-orders-title-wrap h3 {
+  margin: 0;
+  color: var(--orders-ink);
+  font-size: clamp(22px, 1.65vw, 28px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.04;
+}
+
+.latest-orders-live {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 11px;
+  color: #12b84f;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.latest-orders-live svg {
+  width: 38px;
+  height: 16px;
+}
+
+.live-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 999px;
+  background: #10bd4f;
+  box-shadow: 0 0 0 0 rgba(16, 189, 79, 0.35);
+  animation: latest-live-pulse 1.75s ease-out infinite;
+}
+
+@keyframes latest-live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 189, 79, 0.34);
+  }
+  78%,
+  100% {
+    box-shadow: 0 0 0 13px rgba(16, 189, 79, 0);
+  }
+}
+
+.latest-orders-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.latest-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #e4e9f1;
+  border-radius: 999px;
+  background: linear-gradient(#fbfcff, #f7f9fd);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.075);
+  color: #637087;
+  transition:
+    transform 0.28s,
+    box-shadow 0.28s,
+    color 0.28s,
+    border-color 0.28s;
+}
+
+.latest-refresh:hover,
+.latest-refresh:focus-visible {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--orders-accent) 20%, transparent);
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.11);
+  color: var(--orders-accent);
+}
+
+.latest-refresh:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--orders-accent) 18%, transparent);
+  outline-offset: 3px;
+}
+
+.latest-refresh svg {
+  width: 21px;
+  height: 21px;
+}
+
+.latest-refresh.is-refreshing svg {
+  animation: latest-refresh-spin 0.85s linear infinite;
+}
+
+@keyframes latest-refresh-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.latest-orders-list {
+  padding: 4px 24px 18px;
+}
+
+.latest-order-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(152px, 0.36fr);
+  align-items: center;
+  gap: 16px;
+  min-height: 72px;
+  padding: 10px 8px;
+  transition:
+    background-color 0.26s,
+    transform 0.26s;
+  animation: latest-order-in 0.44s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Hairline between rows, bleeding out to the card's padding edge. */
+.latest-order-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -24px;
+  left: -24px;
+  height: 1px;
+  background: var(--orders-line);
+}
+
+.latest-order-row:first-child::before {
+  display: none;
+}
+
+.latest-order-row:hover {
+  background-color: rgba(248, 250, 252, 0.68);
+}
+
+@keyframes latest-order-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.latest-order-customer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.latest-order-avatar {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 1px rgba(203, 213, 225, 0.8),
+    0 9px 18px rgba(15, 23, 42, 0.08);
+}
+
+.latest-order-initial {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: radial-gradient(circle at 35% 24%, rgba(255, 255, 255, 0.95), transparent 42%);
+}
+
+.latest-order-initial svg {
+  width: 50%;
+  height: 50%;
+}
+
+.latest-order-avatar img {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.tone-emerald {
+  background: linear-gradient(145deg, #e5f9ec, #d9f4e3);
+  color: #10a846;
+}
+.tone-sky {
+  background: linear-gradient(145deg, #e1f3ff, #d6edff);
+  color: #1683d8;
+}
+.tone-amber {
+  background: linear-gradient(145deg, #fff0df, #ffe6cd);
+  color: #f26c0c;
+}
+.tone-rose {
+  background: linear-gradient(145deg, #ffe2ef, #f8c8de);
+  color: #e7377d;
+}
+.tone-violet {
+  background: linear-gradient(145deg, #efe9ff, #e3dafd);
+  color: #7048dc;
+}
+.tone-slate {
+  background: linear-gradient(145deg, #e9edf4, #dfe5ee);
+  color: #3f4c61;
+}
+
+.latest-order-copy {
+  min-width: 0;
+}
+
+.latest-order-copy h4,
+.latest-order-copy p {
+  overflow: hidden;
+  letter-spacing: -0.015em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.latest-order-copy h4 {
+  margin: 0;
+  color: var(--orders-ink);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.18;
+}
+
+.latest-order-copy p {
+  margin: 4px 0 0;
+  min-width: 0;
+  color: var(--orders-muted);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.32;
+}
+
+.latest-order-price {
+  white-space: nowrap;
+}
+
+.latest-order-status {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.latest-status-pill,
+.latest-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+}
+
+.latest-status-pill {
+  gap: 7px;
+  min-width: 92px;
+  min-height: 34px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.latest-status-icon {
+  width: 17px;
+  height: 17px;
+  font-size: 10px;
+  color: #fff;
+}
+
+.is-complete {
+  background: linear-gradient(90deg, #e5f9ec, #e0f5e8);
+  color: #10a846;
+}
+.is-complete .latest-status-icon {
+  background: #10b84f;
+}
+.is-pending {
+  background: linear-gradient(90deg, #e8f1ff, #dfeaff);
+  color: #2563eb;
+}
+.is-pending .latest-status-icon {
+  background: #2563eb;
+}
+.is-progress {
+  background: linear-gradient(90deg, #fff1df, #ffe8d0);
+  color: #e46f14;
+}
+.is-progress .latest-status-icon {
+  background: #f97316;
+}
+
+@media (max-width: 768px) {
+  .latest-orders-card {
+    border-radius: 24px;
+  }
+  .latest-orders-header {
+    gap: 12px;
+    min-height: 88px;
+    padding: 18px 14px;
+  }
+  .latest-orders-header::after {
+    left: 18px;
+    width: 76px;
+    height: 4px;
+  }
+  .latest-orders-title-wrap {
+    gap: 13px;
+  }
+  .latest-orders-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 18px;
+  }
+  .latest-orders-icon svg {
+    width: 31px;
+    height: 31px;
+  }
+  .latest-orders-title-wrap h3 {
+    font-size: 18px;
+    line-height: 1.12;
+  }
+  .latest-orders-live {
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 12px;
+  }
+  .latest-orders-live svg {
+    width: 32px;
+    height: 14px;
+  }
+  .live-dot {
+    width: 10px;
+    height: 10px;
+  }
+  .latest-refresh {
+    width: 39px;
+    height: 39px;
+  }
+  .latest-orders-list {
+    padding: 0 14px 14px;
+  }
+  .latest-order-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    min-height: 62px;
+    padding: 9px 0;
+  }
+  .latest-order-row::before {
+    right: -14px;
+    left: -14px;
+  }
+  .latest-order-customer {
+    gap: 9px;
+  }
+  .latest-order-avatar {
+    width: 40px;
+    height: 40px;
+  }
+  .latest-order-copy h4 {
+    font-size: 13px;
+  }
+  .latest-order-copy p {
+    margin-top: 2px;
+    font-size: 11px;
+  }
+  .latest-status-pill {
+    gap: 5px;
+    min-width: 78px;
+    min-height: 32px;
+    padding: 8px 9px;
+    font-size: 11px;
+  }
+  .latest-status-icon {
+    width: 15px;
+    height: 15px;
+    font-size: 9px;
+  }
+}

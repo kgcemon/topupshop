@@ -283,3 +283,21 @@ export const getAllPublishedBlogPostsForSitemap = cache(async () => {
     select: { slug: true, updatedAt: true },
   });
 });
+
+// Public "Recent Orders" feed on the home page. Failed/cancelled/refunded
+// orders are left out on purpose — the feed is social proof, not an audit log.
+export const getRecentPublicOrders = cache(async (limit = 10) => {
+  return prisma.order.findMany({
+    where: { status: { in: ["PENDING", "APPROVED", "RUNNING", "DELIVERED"] } },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    select: {
+      id: true,
+      amount: true,
+      status: true,
+      guestName: true,
+      user: { select: { name: true, image: true } },
+      rechargeOption: { select: { label: true } },
+    },
+  });
+});

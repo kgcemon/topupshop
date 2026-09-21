@@ -12,6 +12,7 @@ import { Carousel } from "@/components/carousel";
 import { ProductGrid } from "@/components/product-grid";
 import { BlogPostCard } from "@/components/blog-post-card";
 import { SocialLinksRow } from "@/components/social-links-row";
+import { RecentOrders } from "@/components/recent-orders";
 
 export const metadata: Metadata = {
   title: "topupshop.co - Diamond & Membership TopUp | Largest TopUp Site In Bangladesh",
@@ -69,6 +70,8 @@ export default async function HomePage() {
           </section>
         ))}
       </div>
+
+      <RecentOrders />
 
       <section className="container mx-auto md:mb-10">
         <div className="my-5 flex items-center justify-center md:my-10">
