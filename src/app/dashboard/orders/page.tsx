@@ -55,6 +55,8 @@ export default async function OrderHistoryPage({
                   <dd className="text-right font-bold text-gray-900">{formatTaka(order.amount)} TK</dd>
                   <dt>Method</dt>
                   <dd className="text-right">{order.paymentMethod}</dd>
+                  <dt>Trx ID</dt>
+                  <dd className="text-right font-mono break-all">{order.transactionId || "—"}</dd>
                   <dt>Date</dt>
                   <dd className="text-right">{formatDhakaDateTime(order.createdAt)}</dd>
                 </dl>
@@ -63,7 +65,7 @@ export default async function OrderHistoryPage({
           </div>
 
           <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="w-full min-w-[760px] text-sm">
               <thead>
                 <tr className="border-b border-gray-200 text-left text-gray-500">
                   <th className="py-2 pr-3">Order</th>
@@ -71,6 +73,7 @@ export default async function OrderHistoryPage({
                   <th className="py-2 pr-3">Player ID</th>
                   <th className="py-2 pr-3">Amount</th>
                   <th className="py-2 pr-3">Method</th>
+                  <th className="py-2 pr-3">Trx ID</th>
                   <th className="py-2 pr-3">Status</th>
                   <th className="py-2 pr-3">Date</th>
                 </tr>
@@ -86,6 +89,7 @@ export default async function OrderHistoryPage({
                     <td className="py-3 pr-3">{order.playerId}</td>
                     <td className="py-3 pr-3 font-bold">{formatTaka(order.amount)} TK</td>
                     <td className="py-3 pr-3">{order.paymentMethod}</td>
+                    <td className="py-3 pr-3 font-mono text-xs">{order.transactionId || "—"}</td>
                     <td className="py-3 pr-3">
                       <OrderStatusBadge status={order.status} />
                     </td>
