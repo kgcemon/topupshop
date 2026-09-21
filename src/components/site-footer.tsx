@@ -28,7 +28,7 @@ const supportLinks = [
 const FOOTER_TITLE =
   "mt-5 pb-3 font-primary text-xl font-normal uppercase tracking-wider text-white";
 const FOOTER_LINK =
-  "block font-primary text-sm font-medium leading-[23px] text-[#bbb8b8] transition-colors hover:text-white";
+  "block font-primary text-sm font-medium leading-6 text-[#bbb8b8] transition-colors hover:text-white";
 
 export function SiteFooter({ settings }: { settings: Settings }) {
   return (
@@ -44,7 +44,6 @@ export function SiteFooter({ settings }: { settings: Settings }) {
                   alt={`${settings.siteName} Logo`}
                   width={160}
                   height={35}
-                  unoptimized={!!settings.logo}
                   className="h-auto w-36"
                 />
               </span>

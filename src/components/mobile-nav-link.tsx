@@ -24,6 +24,8 @@ export function MobileNavLink({
   return (
     <Link
       href={href}
+      // Same reasoning as site-header-nav: dynamic routes, nothing to prefetch.
+      prefetch={false}
       aria-label={label}
       aria-current={isActive ? "page" : undefined}
       className={`relative z-[1] flex h-[50px] min-w-0 flex-col items-center justify-start gap-1 pt-px text-center transition-colors ${

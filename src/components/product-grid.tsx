@@ -28,7 +28,10 @@ export function ProductGrid({ products }: { products: Product[] }) {
                 <div className="relative mx-auto h-[100px] w-[100px] overflow-hidden rounded-md">
                   <Image
                     src={product.image}
-                    alt={product.name}
+                    // The caption below already names the product inside the
+                    // same link, so the icon is decorative — repeating the name
+                    // here makes screen readers announce it twice.
+                    alt=""
                     width={100}
                     height={100}
                     sizes="100px"
@@ -71,6 +74,10 @@ export function ProductGrid({ products }: { products: Product[] }) {
                 href={href}
                 target={isExternal ? "_blank" : undefined}
                 rel={isExternal ? "noopener noreferrer" : undefined}
+                // Product pages render on demand and have no loading.tsx, so a
+                // prefetch only fetches an empty shell — ten tiles meant twenty
+                // wasted requests right after hydration on every home visit.
+                prefetch={false}
                 className="block"
               >
                 {media}

@@ -10,11 +10,14 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      // Cloudflare injects its Web Analytics beacon into every HTML response;
+      // without these two origins the browser blocks it and logs a CSP
+      // violation on every page view.
+      "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://lh3.googleusercontent.com",
       "font-src 'self' data:",
-      "connect-src 'self'",
+      "connect-src 'self' https://cloudflareinsights.com",
       "object-src 'none'",
       "base-uri 'self'",
       // Google sign-in is a form POST that 302s to accounts.google.com, and

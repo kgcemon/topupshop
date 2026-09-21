@@ -7,7 +7,10 @@
 
   /* Brand accent — drives buttons, links, the notice bar and every
      `primary-*` utility across the site. */
-  --site-color: #138f77;
+  /* #118570 rather than the original #138f77: white text on the old shade
+     measured 4.02:1, just under the 4.5:1 WCAG AA minimum. This one is 4.55:1
+     and visually indistinguishable. */
+  --site-color: #118570;
   --notice-color: var(--site-color);
   /* Deep navy used for the footer plate. */
   --secondary-color: #081149;
@@ -23,7 +26,7 @@
   --color-primary-200: #b0e3d5;
   --color-primary-300: #7bcdba;
   --color-primary-400: #3fae97;
-  --color-primary-500: #138f77;
+  --color-primary-500: #118570;
   --color-primary-600: #0d7361;
   --color-primary-700: #0c5c4e;
   --color-primary-800: #0c4a40;
@@ -267,3 +270,4 @@ html {
   border-color: color-mix(in srgb, var(--site-color) 60%, #fff);
   box-shadow: 0 8px 22px color-mix(in srgb, var(--site-color) 16%, transparent);
 }
+

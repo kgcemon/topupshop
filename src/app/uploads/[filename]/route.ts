@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { readFile, stat } from "fs/promises";
 import path from "path";
-import { UPLOAD_DIR } from "@/lib/upload";
+import { UPLOAD_DIR } from "@/lib/upload-dir";
 
 const CONTENT_TYPES: Record<string, string> = {
   ".jpg": "image/jpeg",

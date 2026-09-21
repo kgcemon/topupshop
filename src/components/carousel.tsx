@@ -59,16 +59,23 @@ export function Carousel({ slides }: { slides: Slide[] }) {
         </div>
 
         {slides.length > 1 && (
-          <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+          // Each button is a 24x24 touch target (WCAG 2.5.8 needs the targets'
+          // centres at least 24px apart), with the visible 4px bar centred
+          // inside it at the same 12px from the bottom edge it always sat at.
+          <div className="absolute inset-x-0 bottom-[2px] flex justify-center">
             {slides.map((slide, i) => (
               <button
                 key={slide.id}
                 aria-label={`Slide ${i + 1}`}
                 onClick={() => setIndex(i)}
-                className={`h-1 w-3 transition-colors ${
-                  i === index ? "bg-primary-500" : "bg-[#090f207f]"
-                }`}
-              />
+                className="flex h-6 w-6 items-center justify-center"
+              >
+                <span
+                  className={`block h-1 w-3 transition-colors ${
+                    i === index ? "bg-primary-500" : "bg-[#090f207f]"
+                  }`}
+                />
+              </button>
             ))}
           </div>
         )}

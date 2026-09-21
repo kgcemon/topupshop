@@ -7,9 +7,14 @@ import { HelpBubble } from "@/components/help-bubble";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { getSiteSettings } from "@/lib/data";
 
+// `subsets` only picks which files get a <link rel=preload>; the generated CSS
+// still declares every subset with a unicode-range, so Bengali text keeps
+// rendering in Hind Siliguri. Preloading the four Bengali weights too (~40KB
+// each, 160KB total) put them ahead of the LCP banner on mobile — the browser
+// now fetches them as soon as it lays out the first Bengali glyph instead.
 const bodyFont = Hind_Siliguri({
   variable: "--font-body",
-  subsets: ["latin", "bengali"],
+  subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
 
@@ -22,7 +27,7 @@ const headingFont = Bree_Serif({
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export const viewport: Viewport = {
-  themeColor: "#138f77",
+  themeColor: "#118570",
 };
 
 const DEFAULT_DESCRIPTION =

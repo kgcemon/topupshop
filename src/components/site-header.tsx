@@ -28,13 +28,16 @@ export async function SiteHeader() {
     <header className="site-header">
       <div className="container m-auto p-2 py-3 md:px-0 md:py-5">
         <nav className="flex items-center justify-between">
-          <Link href="/" className="shrink-0">
+          <Link href="/" prefetch={false} className="shrink-0">
             <Image
               src={settings.logo || "/images/logo.png"}
               alt={`${settings.siteName} Logo`}
               width={192}
               height={43}
-              unoptimized={!!settings.logo}
+              // Above the fold on every page, so never lazy-load it. It goes
+              // through the optimizer as well: an admin-uploaded logo is a
+              // multi-thousand-px PNG that otherwise ships in full (~330KB).
+              loading="eager"
               className="h-auto max-h-[58px] w-40 object-contain md:w-48"
             />
           </Link>
@@ -67,6 +70,7 @@ export async function SiteHeader() {
             ) : (
               <Link
                 href="/login"
+                prefetch={false}
                 className="rounded-md border-2 border-primary-500 bg-primary-500 px-5 py-2 font-bold text-white transition-colors hover:border-primary-600 hover:bg-primary-600"
               >
                 Login

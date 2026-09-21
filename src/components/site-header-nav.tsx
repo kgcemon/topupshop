@@ -18,6 +18,9 @@ export function SiteHeaderNav({ items }: { items: NavItem[] }) {
           <Link
             key={item.href}
             href={item.href}
+            // Every route here renders on demand with no loading.tsx, so the
+            // viewport prefetch only fetches an empty shell on each page view.
+            prefetch={false}
             aria-current={isActive ? "page" : undefined}
             className={`inline-block font-bold mx-2 p-1 rounded-lg ${
               isActive ? "text-primary-600" : "hover:text-primary-600"
