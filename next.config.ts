@@ -42,7 +42,10 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [{ protocol: "https", hostname: "lh3.googleusercontent.com" }],
-    formats: ["image/avif", "image/webp"],
+    // WebP only: Cloudflare caches /_next/image by URL without varying on
+    // Accept, so a cached AVIF would break browsers that cannot decode it.
+    // Every browser we support decodes WebP.
+    formats: ["image/webp"],
     minimumCacheTTL: 2678400,
   },
   async headers() {
