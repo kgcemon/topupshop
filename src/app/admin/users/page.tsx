@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatTaka, formatDhakaDate } from "@/lib/utils";
 import { UserBlockControl } from "@/components/user-block-control";
@@ -7,13 +8,20 @@ import { OrderHistoryList } from "@/components/order-history-list";
 import { AddManagerForm } from "@/components/add-manager-form";
 import { RemoveManagerButton } from "@/components/remove-manager-button";
 
+const SORT_OPTIONS = [
+  { key: "newest", label: "নতুন আগে" },
+  { key: "wallet", label: "ব্যালেন্স বেশি আগে" },
+] as const;
+type SortKey = (typeof SORT_OPTIONS)[number]["key"];
+
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; sort?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, sort } = await searchParams;
   const query = (q ?? "").trim();
+  const sortKey: SortKey = sort === "wallet" ? "wallet" : "newest";
 
   const [users, totalUsers, totalAdmins, totalManagers] = await Promise.all([
     prisma.user.findMany({
@@ -26,7 +34,10 @@ export default async function AdminUsersPage({
             ],
           }
         : {},
-      orderBy: { createdAt: "desc" },
+      orderBy:
+        sortKey === "wallet"
+          ? [{ walletBalance: "desc" }, { createdAt: "desc" }]
+          : { createdAt: "desc" },
       take: 100,
       include: {
         _count: { select: { orders: true, referrals: true } },
@@ -107,7 +118,25 @@ export default async function AdminUsersPage({
         <AddManagerForm />
       </div>
 
+      <div className="mb-3 flex flex-wrap gap-2">
+        {SORT_OPTIONS.map((option) => (
+          <Link
+            key={option.key}
+            href={`/admin/users?sort=${option.key}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
+            scroll={false}
+            className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${
+              sortKey === option.key
+                ? "bg-secondary-900 text-white shadow-sm"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            {option.label}
+          </Link>
+        ))}
+      </div>
+
       <form className="mb-4">
+        <input type="hidden" name="sort" value={sortKey} />
         <input
           type="text"
           name="q"
