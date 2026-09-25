@@ -750,3 +750,61 @@ model SiteSetting {
   smtpFromEmail String?
   smtpFromName  String?
 }
+
+enum BackupStatus {
+  SUCCESS
+  FAILED
+}
+
+// Automatic database backups uploaded to the admin's own Google Drive.
+// Single row (id = 1), same singleton pattern as SiteSetting.
+//
+// The OAuth client id/secret live here rather than in env so the admin can
+// connect a Drive entirely from /admin/backups; they fall back to
+// GOOGLE_DRIVE_CLIENT_ID/SECRET and then to the AUTH_GOOGLE_* login client.
+// Only the `drive.file` scope is requested, so this app can only ever see and
+// delete the backup files it uploaded itself — never the rest of the Drive.
+model BackupSetting {
+  id              Int     @id @default(1)
+  enabled         Boolean @default(false) // master switch for the scheduled runs
+  intervalMinutes Int     @default(60)
+  keepCount       Int     @default(5) // dumps retained in Drive; older ones are deleted after each run
+
+  googleClientId     String?   @db.Text
+  googleClientSecret String?   @db.Text
+  googleRefreshToken String?   @db.Text // presence of this = "Drive connected"
+  googleAccessToken  String?   @db.Text // short-lived, cached until googleTokenExpiry
+  googleTokenExpiry  DateTime?
+  googleEmail        String? // connected account, shown in the admin UI
+  oauthState         String?   @db.Text // CSRF state for the connect flow currently in flight
+
+  driveFolderId   String? // folder we created and upload into (drive.file can't browse existing ones)
+  driveFolderName String  @default("TopupShop Backups")
+
+  // Shared secret for /api/backup/run, so an external cron (cPanel, cron-job.org,
+  // Cloudflare) can drive the schedule when the in-process timer isn't enough.
+  cronSecret String? @db.Text
+
+  lastRunAt     DateTime?
+  lastSuccessAt DateTime?
+  lastError     String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// One row per backup attempt. Successful rows double as the retention list:
+// anything past BackupSetting.keepCount is deleted from Drive and from here.
+model BackupLog {
+  id          String       @id @default(cuid())
+  fileName    String
+  driveFileId String?
+  sizeBytes   Int?
+  status      BackupStatus
+  trigger     String       @default("auto") // "auto" | "manual" | "cron"
+  durationMs  Int?
+  error       String?      @db.Text
+  createdAt   DateTime     @default(now())
+
+  @@index([status, createdAt])
+}

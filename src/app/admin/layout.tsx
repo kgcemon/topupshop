@@ -38,6 +38,7 @@ function buildNav(
     { href: "/admin/notices", label: "Notices", badge: 0 },
     { href: "/admin/reviews", label: "Reviews", badge: pendingReviews },
     { href: "/admin/analytics", label: "Analytics", badge: 0 },
+    { href: "/admin/backups", label: "Backups", badge: 0 },
     { href: "/admin/settings", label: "Settings", badge: 0 },
   ];
 }

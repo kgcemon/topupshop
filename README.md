@@ -28,6 +28,10 @@ Next.js 16 (App Router) + TypeScript + Prisma (MySQL) + Auth.js v5 (NextAuth) + 
 - Admin panel (`/admin`, role-protected): approve/reject deposits (credits wallet),
   approve/reject/deliver orders (auto-refunds wallet on reject/cancel), manage products,
   recharge options, banners and the homepage notice bar.
+- Automatic database backups (`/admin/backups`): gzipped SQL dumps uploaded on a schedule
+  (hourly by default) to a Google Drive the admin connects via OAuth, keeping only the
+  newest N (default 5) and deleting the rest. Driven by an in-process timer, with an
+  optional secret-protected `/api/backup/run` endpoint for external cron.
 - Route protection via `src/proxy.ts` (Next 16's renamed middleware) + a second
   server-side check in `admin/layout.tsx` and inside every server action (defense in depth,
   since proxy matchers don't cover Server Actions on other routes).
