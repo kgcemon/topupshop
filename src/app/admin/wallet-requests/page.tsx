@@ -11,10 +11,20 @@ const METHOD_COLORS: Record<string, string> = {
   ROCKET: "#8C3494",
 };
 
-export default async function AdminWalletRequestsPage() {
+export default async function AdminWalletRequestsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
+  const query = (q ?? "").trim();
+
   const [transactions, settings] = await Promise.all([
     prisma.walletTransaction.findMany({
-      where: { type: "DEPOSIT" },
+      where: {
+        type: "DEPOSIT",
+        ...(query ? { transactionId: { contains: query } } : {}),
+      },
       orderBy: { createdAt: "desc" },
       take: 100,
       include: { user: true },
@@ -25,8 +35,23 @@ export default async function AdminWalletRequestsPage() {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-6">
       <h1 className="mb-4 text-lg font-bold">Wallet Deposit Requests</h1>
+
+      <form className="mb-4">
+        <input
+          type="text"
+          name="q"
+          defaultValue={query}
+          placeholder="ট্রানজেকশন আইডি দিয়ে খুঁজুন..."
+          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm sm:max-w-sm"
+        />
+      </form>
+
       <div className="space-y-3">
-        {transactions.length === 0 && <p className="text-sm text-gray-500">কোনো রিকোয়েস্ট নেই।</p>}
+        {transactions.length === 0 && (
+          <p className="text-sm text-gray-500">
+            {query ? "এই ট্রানজেকশন আইডিতে কোনো রিকোয়েস্ট পাওয়া যায়নি।" : "কোনো রিকোয়েস্ট নেই।"}
+          </p>
+        )}
         {transactions.map((tx) => {
           const icon =
             tx.method === "BKASH"
