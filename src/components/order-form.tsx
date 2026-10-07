@@ -15,6 +15,13 @@ type RechargeOption = { id: number; label: string; price: number; stock: number 
 
 type PaymentNumbers = { bkashNumber: string; nagadNumber: string; rocketNumber: string };
 
+type ManualMethod = "BKASH" | "NAGAD" | "ROCKET";
+
+// bKash leads the manual methods normally; under the admin's minimum amount it
+// drops to the end so the method the customer should actually use comes first.
+const MANUAL_METHODS: readonly ManualMethod[] = ["BKASH", "NAGAD", "ROCKET"];
+const MANUAL_METHODS_BELOW_MIN: readonly ManualMethod[] = ["NAGAD", "ROCKET", "BKASH"];
+
 type PaymentIcons = {
   bkashIcon: string | null;
   nagadIcon: string | null;
@@ -59,9 +66,7 @@ export function OrderForm({
   const canOrderAsGuest = !isLoggedIn && allowGuestOrders;
   const mustLogin = !isLoggedIn && !allowGuestOrders;
   const [selectedOptionId, setSelectedOptionId] = useState<number | undefined>(undefined);
-  const [method, setMethod] = useState<"WALLET" | "BKASH" | "NAGAD" | "ROCKET">(
-    isLoggedIn ? "WALLET" : "BKASH"
-  );
+  const [method, setMethod] = useState<"WALLET" | ManualMethod>(isLoggedIn ? "WALLET" : "BKASH");
   const [state, formAction, pending] = useActionState(placeOrderAction, initialState);
   const pathname = usePathname();
   const loginHref = `/login?callbackUrl=${encodeURIComponent(pathname)}`;
@@ -80,13 +85,21 @@ export function OrderForm({
           ? paymentNumbers.rocketNumber
           : null;
 
-  // Below the admin's minimum, bKash hides its number and shows the warning
-  // instead (Nagad/Rocket are never affected). No package picked = no amount
-  // to judge yet, so nothing is withheld.
-  const bkashWarning =
-    method === "BKASH" && bkashMinAmount > 0 && price > 0 && price < bkashMinAmount
-      ? bkashMinWarning
-      : null;
+  // No package picked = no amount to judge yet, so nothing is withheld.
+  const bkashBelowMin = bkashMinAmount > 0 && price > 0 && price < bkashMinAmount;
+  const manualMethods = bkashBelowMin ? MANUAL_METHODS_BELOW_MIN : MANUAL_METHODS;
+
+  // Whenever the ordering flips, pick whatever now sits first — a wallet
+  // payment is left alone. (React's adjust-state-during-render pattern.)
+  const [wasBelowMin, setWasBelowMin] = useState(bkashBelowMin);
+  if (wasBelowMin !== bkashBelowMin) {
+    setWasBelowMin(bkashBelowMin);
+    if (method !== "WALLET") setMethod(manualMethods[0]);
+  }
+
+  // bKash hides its number and shows the admin's warning instead; Nagad and
+  // Rocket are never affected.
+  const bkashWarning = method === "BKASH" && bkashBelowMin ? bkashMinWarning : null;
 
   const methodIcon =
     method === "BKASH"
@@ -344,7 +357,7 @@ export function OrderForm({
                   />
                 }
                 subtitle="Manual Pay"
-                onClick={() => setMethod("BKASH")}
+                onClick={() => setMethod(manualMethods[0])}
               />
             </div>
 
@@ -355,7 +368,7 @@ export function OrderForm({
             ) : (
               <div className="mb-4 space-y-3">
                 <div className="flex gap-2">
-                  {(["BKASH", "NAGAD", "ROCKET"] as const).map((m) => {
+                  {manualMethods.map((m) => {
                     const icon =
                       m === "BKASH" ? paymentIcons.bkashIcon : m === "NAGAD" ? paymentIcons.nagadIcon : paymentIcons.rocketIcon;
                     return (

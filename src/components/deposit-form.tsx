@@ -8,11 +8,18 @@ import { PaymentNumberCard } from "@/components/payment-number-card";
 
 const initialState: ActionState = {};
 
-const METHOD_COLORS: Record<"BKASH" | "NAGAD" | "ROCKET", string> = {
+type ManualMethod = "BKASH" | "NAGAD" | "ROCKET";
+
+const METHOD_COLORS: Record<ManualMethod, string> = {
   BKASH: "#E2136E",
   NAGAD: "#F42534",
   ROCKET: "#8C3494",
 };
+
+// Same ordering rule as the order form: bKash leads, except under the admin's
+// minimum amount, where it moves to the end.
+const METHODS: readonly ManualMethod[] = ["BKASH", "NAGAD", "ROCKET"];
+const METHODS_BELOW_MIN: readonly ManualMethod[] = ["NAGAD", "ROCKET", "BKASH"];
 
 export function DepositForm({
   numbers,
@@ -25,7 +32,7 @@ export function DepositForm({
   bkashMinAmount: number;
   bkashMinWarning: string | null;
 }) {
-  const [method, setMethod] = useState<"BKASH" | "NAGAD" | "ROCKET">("BKASH");
+  const [method, setMethod] = useState<ManualMethod>("BKASH");
   const [amount, setAmount] = useState("");
   const [state, formAction, pending] = useActionState(depositAction, initialState);
 
@@ -35,17 +42,23 @@ export function DepositForm({
   const methodIcon =
     method === "BKASH" ? icons.bkashIcon : method === "NAGAD" ? icons.nagadIcon : icons.rocketIcon;
 
-  // Same guard as the order form: a deposit below the admin's minimum hides the
-  // bKash number and shows the warning in its place.
+  // Same guard as the order form, judged on the amount being typed.
   const typedAmount = Number(amount);
-  const bkashWarning =
-    method === "BKASH" &&
+  const bkashBelowMin =
     bkashMinAmount > 0 &&
     Number.isFinite(typedAmount) &&
     typedAmount > 0 &&
-    typedAmount < bkashMinAmount
-      ? bkashMinWarning
-      : null;
+    typedAmount < bkashMinAmount;
+  const methods = bkashBelowMin ? METHODS_BELOW_MIN : METHODS;
+
+  // Whenever the ordering flips, pick whatever now sits first.
+  const [wasBelowMin, setWasBelowMin] = useState(bkashBelowMin);
+  if (wasBelowMin !== bkashBelowMin) {
+    setWasBelowMin(bkashBelowMin);
+    setMethod(methods[0]);
+  }
+
+  const bkashWarning = method === "BKASH" && bkashBelowMin ? bkashMinWarning : null;
 
   if (state.success) {
     return (
@@ -62,7 +75,7 @@ export function DepositForm({
       <div>
         <label className="mb-1 block text-sm font-semibold">Payment Method</label>
         <div className="flex gap-2">
-          {(["BKASH", "NAGAD", "ROCKET"] as const).map((m) => {
+          {methods.map((m) => {
             const icon = m === "BKASH" ? icons.bkashIcon : m === "NAGAD" ? icons.nagadIcon : icons.rocketIcon;
             return (
               <button
