@@ -41,6 +41,8 @@ export default async function DepositPage() {
               nagadIcon: settings.nagadIcon,
               rocketIcon: settings.rocketIcon,
             }}
+            bkashMinAmount={settings.bkashMinAmount}
+            bkashMinWarning={settings.bkashMinWarning}
           />
         ) : (
           <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center">

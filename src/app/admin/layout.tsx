@@ -29,6 +29,7 @@ function buildNav(
     { href: "/admin/market", label: "Market", badge: pendingMarketListings },
     { href: "/admin/unipin", label: "Unipin", badge: 0 },
     { href: "/admin/shell", label: "Garena Shell", badge: 0 },
+    { href: "/admin/payment-settings", label: "Payment Settings", badge: 0 },
     { href: "/admin/api-settings", label: "API Settings", badge: 0 },
     { href: "/admin/sms-settings", label: "SMS Settings", badge: 0 },
     { href: "/admin/store-sms", label: "Store SMS", badge: 0 },

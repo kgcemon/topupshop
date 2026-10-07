@@ -10,6 +10,7 @@ import {
   blogPostFormSchema,
   productFormSchema,
   siteSettingsSchema,
+  paymentSettingsSchema,
   sectionFormSchema,
   broadcastNotificationSchema,
   changePasswordSchema,
@@ -1100,9 +1101,6 @@ export async function updateSiteSettingsAction(
     telegramLink: formData.get("telegramLink") || "",
     facebookLink: formData.get("facebookLink") || "",
     contactEmail: formData.get("contactEmail"),
-    bkashNumber: formData.get("bkashNumber"),
-    nagadNumber: formData.get("nagadNumber"),
-    rocketNumber: formData.get("rocketNumber"),
     referralBonusPercent: formData.get("referralBonusPercent"),
     smtpHost: formData.get("smtpHost") || "",
     smtpPort: formData.get("smtpPort") || "",
@@ -1208,6 +1206,41 @@ export async function updateSiteSettingsAction(
 
   revalidatePath("/", "layout");
   revalidatePath("/admin/settings");
+  return { success: true };
+}
+
+export async function updatePaymentSettingsAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireAdmin();
+
+  const parsed = paymentSettingsSchema.safeParse({
+    bkashNumber: formData.get("bkashNumber"),
+    nagadNumber: formData.get("nagadNumber"),
+    rocketNumber: formData.get("rocketNumber"),
+    bkashMinAmount: formData.get("bkashMinAmount") || "",
+    bkashMinWarning: formData.get("bkashMinWarning") || "",
+  });
+
+  if (!parsed.success) {
+    return { fieldErrors: fieldErrorsFrom(parsed.error.issues) };
+  }
+
+  const data = {
+    ...parsed.data,
+    bkashMinWarning: parsed.data.bkashMinWarning || null,
+  };
+
+  await prisma.siteSetting.upsert({
+    where: { id: 1 },
+    create: { id: 1, ...data },
+    update: data,
+  });
+
+  // The numbers show up on every topup page and on the deposit page.
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/payment-settings");
   return { success: true };
 }
 

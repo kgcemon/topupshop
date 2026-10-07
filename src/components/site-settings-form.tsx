@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { updateSiteSettingsAction, sendTestEmailAction } from "@/lib/actions/admin-actions";
 import type { ActionState } from "@/lib/actions/auth-actions";
 
@@ -18,9 +19,6 @@ type SiteSettingsValues = {
   telegramLink: string;
   facebookLink: string | null;
   contactEmail: string;
-  bkashNumber: string;
-  nagadNumber: string;
-  rocketNumber: string;
   bkashIcon: string | null;
   nagadIcon: string | null;
   rocketIcon: string | null;
@@ -181,17 +179,14 @@ export function SiteSettingsForm({ defaultValues }: { defaultValues: SiteSetting
         </div>
       </Section>
 
-      <Section title="পেমেন্ট নাম্বার (Manual Pay)">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="bKash নাম্বার" name="bkashNumber" defaultValue={defaultValues.bkashNumber} error={state.fieldErrors?.bkashNumber} />
-          <Field label="Nagad নাম্বার" name="nagadNumber" defaultValue={defaultValues.nagadNumber} error={state.fieldErrors?.nagadNumber} />
-          <Field label="Rocket নাম্বার" name="rocketNumber" defaultValue={defaultValues.rocketNumber} error={state.fieldErrors?.rocketNumber} />
-        </div>
-      </Section>
-
       <Section title="পেমেন্ট আইকন">
         <p className="-mt-2 mb-2 text-xs text-gray-500">
-          স্কয়ার ইমেজ দিন (যেমন 128x128px) — বড় ছবি দিলেও automatically resize হয়ে যাবে, পারফরম্যান্স নিয়ে চিন্তা করতে হবে না।
+          স্কয়ার ইমেজ দিন (যেমন 128x128px) — বড় ছবি দিলেও automatically resize হয়ে যাবে, পারফরম্যান্স নিয়ে চিন্তা করতে হবে না।{" "}
+          পেমেন্ট নাম্বার এখন আলাদা পেজে —{" "}
+          <Link href="/admin/payment-settings" className="font-semibold text-primary-600 underline">
+            Payment Settings
+          </Link>
+          ।
         </p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <IconField

@@ -717,6 +717,13 @@ model SiteSetting {
   bkashNumber          String  @default("01343053411")
   nagadNumber          String  @default("01343053411")
   rocketNumber         String  @default("01343053411")
+
+  // Low-amount guard for bKash only. When the order price (or the wallet
+  // deposit amount being typed) is below bkashMinAmount, the bKash number is
+  // replaced by bkashMinWarning everywhere it's shown; Nagad and Rocket are
+  // never affected. 0 disables the guard.
+  bkashMinAmount       Int     @default(0)
+  bkashMinWarning      String? @db.Text
   bkashIcon            String?
   nagadIcon            String?
   rocketIcon           String?

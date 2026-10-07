@@ -191,6 +191,8 @@ export default async function TopupProductPage({
           rocketIcon: settings.rocketIcon,
           walletIcon: settings.walletIcon,
         }}
+        bkashMinAmount={settings.bkashMinAmount}
+        bkashMinWarning={settings.bkashMinWarning}
       />
 
       {rules.length > 0 && (

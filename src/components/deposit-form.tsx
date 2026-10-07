@@ -17,11 +17,16 @@ const METHOD_COLORS: Record<"BKASH" | "NAGAD" | "ROCKET", string> = {
 export function DepositForm({
   numbers,
   icons,
+  bkashMinAmount,
+  bkashMinWarning,
 }: {
   numbers: { bkashNumber: string; nagadNumber: string; rocketNumber: string };
   icons: { bkashIcon: string | null; nagadIcon: string | null; rocketIcon: string | null };
+  bkashMinAmount: number;
+  bkashMinWarning: string | null;
 }) {
   const [method, setMethod] = useState<"BKASH" | "NAGAD" | "ROCKET">("BKASH");
+  const [amount, setAmount] = useState("");
   const [state, formAction, pending] = useActionState(depositAction, initialState);
 
   const receivingNumber =
@@ -29,6 +34,18 @@ export function DepositForm({
 
   const methodIcon =
     method === "BKASH" ? icons.bkashIcon : method === "NAGAD" ? icons.nagadIcon : icons.rocketIcon;
+
+  // Same guard as the order form: a deposit below the admin's minimum hides the
+  // bKash number and shows the warning in its place.
+  const typedAmount = Number(amount);
+  const bkashWarning =
+    method === "BKASH" &&
+    bkashMinAmount > 0 &&
+    Number.isFinite(typedAmount) &&
+    typedAmount > 0 &&
+    typedAmount < bkashMinAmount
+      ? bkashMinWarning
+      : null;
 
   if (state.success) {
     return (
@@ -77,15 +94,18 @@ export function DepositForm({
         <PaymentNumberCard
           method={method}
           number={receivingNumber}
+          warning={bkashWarning}
           icon={
             methodIcon ? (
               <Image src={methodIcon} alt={method} width={20} height={20} unoptimized className="h-5 w-5 shrink-0 rounded-full object-cover" />
             ) : undefined
           }
         />
-        <p className="mt-1.5 text-xs text-gray-500">
-          উপরের নাম্বারে টাকা Send Money করে নিচে Amount ও Transaction ID দিন।
-        </p>
+        {!bkashWarning && (
+          <p className="mt-1.5 text-xs text-gray-500">
+            উপরের নাম্বারে টাকা Send Money করে নিচে Amount ও Transaction ID দিন।
+          </p>
+        )}
       </div>
 
       <div>
@@ -98,6 +118,8 @@ export function DepositForm({
           type="number"
           min={20}
           required
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
           className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
         />
         {state.fieldErrors?.amount && <p className="mt-1 text-sm text-red-600">{state.fieldErrors.amount}</p>}

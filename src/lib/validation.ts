@@ -174,6 +174,29 @@ export const marketOfferFormSchema = z.object({
   message: z.string().trim().max(500, "মেসেজ সর্বোচ্চ ৫০০ ক্যারেক্টার হতে পারবে").optional().or(z.literal("")),
 });
 
+export const paymentSettingsSchema = z
+  .object({
+    bkashNumber: z.string().trim().min(1, "bKash নাম্বার আবশ্যক"),
+    nagadNumber: z.string().trim().min(1, "Nagad নাম্বার আবশ্যক"),
+    rocketNumber: z.string().trim().min(1, "Rocket নাম্বার আবশ্যক"),
+    // 0 = guard off. Below this amount the bKash number is swapped for the warning.
+    bkashMinAmount: z.preprocess(
+      (v) => (v === "" || v == null ? 0 : v),
+      z.coerce.number().int().min(0, "০ বা তার বেশি লিখুন").max(100000, "সর্বোচ্চ ১০০০০০")
+    ),
+    bkashMinWarning: z
+      .string()
+      .trim()
+      .max(300, "ওয়ার্নিং সর্বোচ্চ ৩০০ ক্যারেক্টার হতে পারবে")
+      .optional()
+      .or(z.literal("")),
+  })
+  // An amount with no message would just blank out the bKash number.
+  .refine((data) => data.bkashMinAmount === 0 || !!data.bkashMinWarning, {
+    message: "সর্বনিম্ন অ্যামাউন্ট দিলে ওয়ার্নিং মেসেজও লিখতে হবে",
+    path: ["bkashMinWarning"],
+  });
+
 export const siteSettingsSchema = z.object({
   siteName: z.string().trim().min(1, "সাইট নাম আবশ্যক"),
   tagline: z.string().trim().min(1, "ট্যাগলাইন আবশ্যক"),
@@ -184,9 +207,6 @@ export const siteSettingsSchema = z.object({
   telegramLink: z.string().trim().url("সঠিক টেলিগ্রাম লিংক দিন").optional().or(z.literal("")),
   facebookLink: z.string().trim().url("সঠিক ফেসবুক লিংক দিন").optional().or(z.literal("")),
   contactEmail: z.string().trim().email("সঠিক ইমেইল দিন"),
-  bkashNumber: z.string().trim().min(1),
-  nagadNumber: z.string().trim().min(1),
-  rocketNumber: z.string().trim().min(1),
   referralBonusPercent: z.coerce
     .number()
     .min(1, "সর্বনিম্ন ১%")

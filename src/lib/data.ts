@@ -23,6 +23,8 @@ export const getSiteSettings = cache(async () => {
       bkashNumber: "01343053411",
       nagadNumber: "01343053411",
       rocketNumber: "01343053411",
+      bkashMinAmount: 0,
+      bkashMinWarning: null,
       bkashIcon: null,
       nagadIcon: null,
       rocketIcon: null,

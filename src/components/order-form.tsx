@@ -32,6 +32,8 @@ export function OrderForm({
   walletBalance,
   paymentNumbers,
   paymentIcons,
+  bkashMinAmount,
+  bkashMinWarning,
   stockOut,
   allowGuestOrders,
   depositEnabled,
@@ -45,6 +47,8 @@ export function OrderForm({
   walletBalance: number;
   paymentNumbers: PaymentNumbers;
   paymentIcons: PaymentIcons;
+  bkashMinAmount: number;
+  bkashMinWarning: string | null;
   stockOut: boolean;
   allowGuestOrders: boolean;
   depositEnabled: boolean;
@@ -75,6 +79,14 @@ export function OrderForm({
         : method === "ROCKET"
           ? paymentNumbers.rocketNumber
           : null;
+
+  // Below the admin's minimum, bKash hides its number and shows the warning
+  // instead (Nagad/Rocket are never affected). No package picked = no amount
+  // to judge yet, so nothing is withheld.
+  const bkashWarning =
+    method === "BKASH" && bkashMinAmount > 0 && price > 0 && price < bkashMinAmount
+      ? bkashMinWarning
+      : null;
 
   const methodIcon =
     method === "BKASH"
@@ -375,15 +387,18 @@ export function OrderForm({
                     <PaymentNumberCard
                       method={method}
                       number={receivingNumber}
+                      warning={bkashWarning}
                       icon={
                         methodIcon ? (
                           <Image src={methodIcon} alt={method} width={20} height={20} unoptimized className="h-5 w-5 shrink-0 rounded-full object-cover" />
                         ) : undefined
                       }
                     />
-                    <p className="mt-1.5 text-xs text-gray-500">
-                      উপরের নাম্বারে টাকা Send Money করে নিচে ট্রানজেকশন আইডি দিন।
-                    </p>
+                    {!bkashWarning && (
+                      <p className="mt-1.5 text-xs text-gray-500">
+                        উপরের নাম্বারে টাকা Send Money করে নিচে ট্রানজেকশন আইডি দিন।
+                      </p>
+                    )}
                   </div>
                 )}
                 <input

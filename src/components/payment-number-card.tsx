@@ -14,10 +14,13 @@ export function PaymentNumberCard({
   method,
   number,
   icon,
+  warning,
 }: {
   method: Method;
   number: string;
   icon?: React.ReactNode;
+  /** Shown in place of the number — see SiteSetting.bkashMinWarning. */
+  warning?: string | null;
 }) {
   const [copied, setCopied] = useState(false);
   const style = METHOD_STYLES[method];
@@ -39,17 +42,51 @@ export function PaymentNumberCard({
     setTimeout(() => setCopied(false), 1500);
   }
 
+  const methodBadge = icon ?? (
+    <span
+      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+      style={{ backgroundColor: style.solid }}
+    >
+      {method.charAt(0)}
+    </span>
+  );
+
+  // Below the admin's minimum amount the number is withheld and the warning
+  // takes its place, so there is nothing to copy.
+  if (warning) {
+    return (
+      <div className="overflow-hidden rounded-xl border border-amber-300">
+        <div className="flex items-center gap-2 bg-amber-50 px-3 py-2">
+          {methodBadge}
+          <span className="text-xs font-bold" style={{ color: style.solid }}>
+            {style.label}
+          </span>
+        </div>
+        <div className="flex items-start gap-2 bg-white px-3 py-3">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="mt-0.5 h-4 w-4 shrink-0 text-amber-600"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v4m0 3h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"
+            />
+          </svg>
+          <p className="whitespace-pre-line text-sm font-semibold leading-relaxed text-amber-800">{warning}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="overflow-hidden rounded-xl border" style={{ borderColor: style.solid }}>
       <div className="flex items-center gap-2 px-3 py-2" style={{ backgroundColor: style.tint }}>
-        {icon ?? (
-          <span
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-            style={{ backgroundColor: style.solid }}
-          >
-            {method.charAt(0)}
-          </span>
-        )}
+        {methodBadge}
         <span className="text-xs font-bold" style={{ color: style.solid }}>
           {style.label} Personal নাম্বারে Send Money করুন
         </span>
