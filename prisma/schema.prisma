@@ -98,6 +98,7 @@ model User {
   reviewedMarketListings MarketListing[]     @relation("MarketListingReviewedBy")
   marketOffers           MarketOffer[]       @relation("MarketOfferBuyer")
   respondedMarketOffers  MarketOffer[]       @relation("MarketOfferRespondedBy")
+  epsPayments            EpsPayment[]
 }
 
 // Per-login activity trail — pruned in application code (see recordLoginActivity)
@@ -144,23 +145,23 @@ model Section {
 }
 
 model Product {
-  id          Int         @id @default(autoincrement())
-  name        String
-  slug        String      @unique
-  image       String
-  sectionId   Int
-  type        ProductType @default(NORMAL)
-  externalUrl String? // used when type = EXTERNAL_LINK (e.g. Telegram tournament link)
-  category    String      @default("Diamond Top-Up")
-  description String?     @db.Text
-  rules       Json? // string[]
-  inputLabel  String? // overrides the checkout "Player ID" field label/placeholder for this product; null = default label
-  nameCheckEnabled Boolean @default(false) // shows the "check your in-game name" lookup under this product's player-id field
-  isActive    Boolean     @default(true)
-  stockOut    Boolean     @default(false)
-  sortOrder   Int         @default(0)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id               Int         @id @default(autoincrement())
+  name             String
+  slug             String      @unique
+  image            String
+  sectionId        Int
+  type             ProductType @default(NORMAL)
+  externalUrl      String? // used when type = EXTERNAL_LINK (e.g. Telegram tournament link)
+  category         String      @default("Diamond Top-Up")
+  description      String?     @db.Text
+  rules            Json? // string[]
+  inputLabel       String? // overrides the checkout "Player ID" field label/placeholder for this product; null = default label
+  nameCheckEnabled Boolean     @default(false) // shows the "check your in-game name" lookup under this product's player-id field
+  isActive         Boolean     @default(true)
+  stockOut         Boolean     @default(false)
+  sortOrder        Int         @default(0)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   section         Section          @relation(fields: [sectionId], references: [id])
   rechargeOptions RechargeOption[]
@@ -199,6 +200,7 @@ enum PaymentMethod {
   BKASH
   NAGAD
   ROCKET
+  EPS // automatic bKash/Nagad/Rocket/card payment through the EPS gateway (see src/lib/eps-*.ts)
 }
 
 enum OrderStatus {
@@ -255,15 +257,16 @@ model Order {
   refundedAt     DateTime?
   refundedAmount Int?
 
-  user                User?           @relation(fields: [userId], references: [id])
-  product             Product         @relation(fields: [productId], references: [id])
-  rechargeOption      RechargeOption  @relation(fields: [rechargeOptionId], references: [id])
-  reviewedBy          User?           @relation("OrderReviewedBy", fields: [reviewedById], references: [id])
+  user                User?             @relation(fields: [userId], references: [id])
+  product             Product           @relation(fields: [productId], references: [id])
+  rechargeOption      RechargeOption    @relation(fields: [rechargeOptionId], references: [id])
+  reviewedBy          User?             @relation("OrderReviewedBy", fields: [reviewedById], references: [id])
   redeemedUnipinCodes UnipinCode[]
   apiCallLogs         ApiCallLog[]
   fulfillmentJob      FulfillmentJob?
   usedPaymentSms      PaymentSms?
   transactionIdUse    TransactionIdUse?
+  epsPayment          EpsPayment?
 
   @@index([userId])
   @@index([status])
@@ -484,17 +487,18 @@ model WalletTransaction {
   type          WalletTransactionType
   method        PaymentMethod           @default(WALLET)
   amount        Int // in BDT, always positive; sign implied by type
-  transactionId String? @unique // bKash/Nagad/Rocket trx id submitted by user
+  transactionId String?                 @unique // bKash/Nagad/Rocket trx id submitted by user
   status        WalletTransactionStatus @default(PENDING)
   note          String?                 @db.Text
   reviewedById  String?
   reviewedAt    DateTime?
   createdAt     DateTime                @default(now())
 
-  user       User  @relation(fields: [userId], references: [id])
-  reviewedBy User? @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  user             User              @relation(fields: [userId], references: [id])
+  reviewedBy       User?             @relation("ReviewedBy", fields: [reviewedById], references: [id])
   usedPaymentSms   PaymentSms?
   transactionIdUse TransactionIdUse?
+  epsPayment       EpsPayment?
 
   @@index([userId])
   @@index([status])
@@ -722,19 +726,19 @@ model SiteSetting {
   // deposit amount being typed) is below bkashMinAmount, the bKash number is
   // replaced by bkashMinWarning everywhere it's shown; Nagad and Rocket are
   // never affected. 0 disables the guard.
-  bkashMinAmount       Int     @default(0)
-  bkashMinWarning      String? @db.Text
-  bkashIcon            String?
-  nagadIcon            String?
-  rocketIcon           String?
-  walletIcon           String?
-  allowGuestOrders     Boolean @default(false)
-  marketEnabled        Boolean @default(true)
+  bkashMinAmount   Int     @default(0)
+  bkashMinWarning  String? @db.Text
+  bkashIcon        String?
+  nagadIcon        String?
+  rocketIcon       String?
+  walletIcon       String?
+  allowGuestOrders Boolean @default(false)
+  marketEnabled    Boolean @default(true)
   // Off hides every product section on the home page (the topup pages stay reachable by direct link)
-  showHomeProducts     Boolean @default(true)
+  showHomeProducts Boolean @default(true)
   // Off hides every wallet-deposit entry point site-wide and refuses new deposit requests
-  depositEnabled       Boolean @default(true)
-  paymentSmsSecret     String? @db.Text // shared secret the mobile SMS-forwarder app must pass as ?secret= to /api/payment-sms
+  depositEnabled   Boolean @default(true)
+  paymentSmsSecret String? @db.Text // shared secret the mobile SMS-forwarder app must pass as ?secret= to /api/payment-sms
 
   // When enabled, /api/payment-sms checks each method's running account
   // balance chain (checkpoint + this SMS's amount must equal this SMS's
@@ -814,4 +818,97 @@ model BackupLog {
   createdAt   DateTime     @default(now())
 
   @@index([status, createdAt])
+}
+
+// Which checkout methods are offered and what they are called, plus the EPS
+// gateway credentials and its cached bearer token. Single row (id = 1), same
+// singleton pattern as SiteSetting/BackupSetting. Kept apart from SiteSetting
+// so the gateway secrets never travel with the public site settings that
+// pages hand to client components — read the public part through
+// getPaymentMethodConfig() only.
+model PaymentGatewaySetting {
+  id Int @id @default(1)
+
+  walletPayEnabled Boolean @default(true)
+  walletPayTitle   String  @default("Wallet Pay")
+  manualPayEnabled Boolean @default(true)
+  manualPayTitle   String  @default("Manual Pay")
+  epsEnabled       Boolean @default(false)
+  epsTitle         String  @default("Auto Pay")
+  epsSubtitle      String? @db.Text // short line under the method, e.g. "bKash, Nagad, Rocket — instant"
+
+  epsApiBaseUrl  String    @default("https://pgapi.eps.com.bd/v1")
+  epsUserName    String?   @db.Text
+  epsPassword    String?   @db.Text
+  epsHashKey     String?   @db.Text
+  epsMerchantId  String?   @db.Text
+  epsStoreId     String?   @db.Text
+  epsToken       String?   @db.Text // cached GetToken bearer, reused until epsTokenExpiry
+  epsTokenExpiry DateTime?
+
+  updatedAt DateTime @updatedAt
+}
+
+enum EpsPaymentPurpose {
+  ORDER
+  DEPOSIT
+}
+
+enum EpsPaymentStatus {
+  PENDING // gateway session opened, customer not confirmed paid yet
+  SUCCESS // verified paid with EPS and settled (order created / wallet credited)
+  FAILED
+  CANCELLED
+  EXPIRED // never confirmed within the reconcile window — still re-checkable by an admin
+}
+
+// One row per EPS checkout session. The order (or the wallet deposit) it pays
+// for is only created once EPS itself confirms the money arrived — never from
+// the browser redirect alone — so an abandoned payment leaves no stuck PENDING
+// order behind and a paid one can never be lost: the return URL, the
+// background reconciler (eps-reconcile.ts) and an admin's "Check status" all
+// funnel into the same idempotent settleEpsPayment(). The conditional
+// PENDING -> SUCCESS claim there plus the unique orderId/walletTransactionId
+// make settling twice impossible.
+model EpsPayment {
+  id                    String            @id @default(cuid())
+  ref                   String            @unique // unguessable id carried in our return URLs
+  merchantTransactionId String            @unique // digits, sent to EPS and used to verify
+  customerOrderId       String            @unique
+  purpose               EpsPaymentPurpose
+  status                EpsPaymentStatus  @default(PENDING)
+  amount                Int // in BDT, decided by the server at checkout
+  paidAmount            Int? // what EPS reported as TotalAmount when it verified
+  userId                String?
+
+  // The order this payment is buying, frozen at checkout. Only for ORDER.
+  productId        Int?
+  rechargeOptionId Int?
+  playerId         String?
+  playerName       String?
+  guestName        String?
+  guestPhone       String?
+
+  epsTransactionId String?   @unique
+  financialEntity  String? // bKash / Nagad / Rocket / card, as EPS reports it
+  redirectUrl      String?   @db.Text
+  lastError        String?   @db.Text
+  lastResponse     String?   @db.Text // raw verify response, for support
+  checkCount       Int       @default(0)
+  lastCheckedAt    DateTime?
+  settledAt        DateTime?
+  ip               String?
+
+  orderId             String? @unique
+  walletTransactionId String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user              User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  order             Order?             @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  walletTransaction WalletTransaction? @relation(fields: [walletTransactionId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
 }

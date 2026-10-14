@@ -52,7 +52,7 @@ export const orderSchema = z.object({
   rechargeOptionId: z.coerce.number().int().positive(),
   playerId: z.string().trim().min(3, "প্লেয়ার আইডি দিন").max(30),
   playerName: z.string().trim().max(60).optional().or(z.literal("")),
-  paymentMethod: z.enum(["WALLET", "BKASH", "NAGAD", "ROCKET"]),
+  paymentMethod: z.enum(["WALLET", "BKASH", "NAGAD", "ROCKET", "EPS"]),
   transactionId: z
     .string()
     .trim()

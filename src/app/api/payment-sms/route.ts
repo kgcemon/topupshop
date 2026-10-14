@@ -15,6 +15,7 @@ const METHOD_LABELS: Record<PaymentMethod, string> = {
   BKASH: "bKash",
   NAGAD: "Nagad",
   ROCKET: "Rocket",
+  EPS: "EPS",
 };
 
 // Which SiteSetting column holds the running-balance checkpoint for each method.

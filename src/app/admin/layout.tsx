@@ -24,6 +24,7 @@ function buildNav(
     { href: "/admin", label: "Dashboard", badge: 0 },
     { href: "/admin/orders", label: "Orders", badge: pendingOrders },
     { href: "/admin/wallet-requests", label: "Wallet Requests", badge: pendingWalletRequests },
+    { href: "/admin/eps-payments", label: "EPS Payments", badge: 0 },
     { href: "/admin/users", label: "Users", badge: 0 },
     { href: "/admin/products", label: "Products", badge: 0 },
     { href: "/admin/market", label: "Market", badge: pendingMarketListings },

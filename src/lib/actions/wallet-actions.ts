@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { depositSchema } from "@/lib/validation";
 import { getSiteSettings } from "@/lib/data";
+import { getPaymentMethodConfig } from "@/lib/payment-methods";
 import type { ActionState } from "@/lib/actions/auth-actions";
 import { claimMatchingPaymentSms } from "@/lib/payment-sms-match";
 import {
@@ -26,6 +27,9 @@ export async function depositAction(
   const settings = await getSiteSettings();
   if (!settings.depositEnabled) {
     return { error: "ডিপোজিট আপাতত বন্ধ আছে।" };
+  }
+  if (!(await getPaymentMethodConfig()).manual.enabled) {
+    return { error: "ম্যানুয়াল পেমেন্ট এই মুহূর্তে বন্ধ আছে।" };
   }
 
   const parsed = depositSchema.safeParse({

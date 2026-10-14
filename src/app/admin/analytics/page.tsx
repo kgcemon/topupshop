@@ -29,6 +29,7 @@ const PAYMENT_COLORS: Record<string, string> = {
   BKASH: "#E2136E",
   NAGAD: "#F42534",
   ROCKET: "#8C3494",
+  EPS: "#0EA5E9",
 };
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -36,6 +37,7 @@ const PAYMENT_LABELS: Record<string, string> = {
   BKASH: "bKash",
   NAGAD: "Nagad",
   ROCKET: "Rocket",
+  EPS: "Auto Pay (EPS)",
 };
 
 function StatTile({

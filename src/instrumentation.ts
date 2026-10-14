@@ -8,4 +8,8 @@ export async function register() {
 
   const { startBackupScheduler } = await import("@/lib/backup-scheduler");
   startBackupScheduler();
+
+  // Settles EPS payments whose customer never made it back to the return URL.
+  const { startEpsReconciler } = await import("@/lib/eps-reconcile");
+  startEpsReconciler();
 }

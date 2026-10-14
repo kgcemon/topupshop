@@ -5,10 +5,14 @@ import Image from "next/image";
 import { depositAction } from "@/lib/actions/wallet-actions";
 import type { ActionState } from "@/lib/actions/auth-actions";
 import { PaymentNumberCard } from "@/components/payment-number-card";
+import { startEpsDepositAction, type EpsStartState } from "@/lib/actions/eps-actions";
+import { AutoPayIcon, AutoPayNotice, EpsRedirectOverlay, WalletRow } from "@/components/auto-pay";
 
 const initialState: ActionState = {};
+const initialEpsState: EpsStartState = {};
 
 type ManualMethod = "BKASH" | "NAGAD" | "ROCKET";
+type DepositMethod = ManualMethod | "EPS";
 
 const METHOD_COLORS: Record<ManualMethod, string> = {
   BKASH: "#E2136E",
@@ -51,14 +55,34 @@ export function DepositForm({
   icons,
   bkashMinAmount,
   bkashMinWarning,
+  manualEnabled,
+  eps,
 }: {
   numbers: { bkashNumber: string; nagadNumber: string; rocketNumber: string };
   icons: { bkashIcon: string | null; nagadIcon: string | null; rocketIcon: string | null };
   bkashMinAmount: number;
   bkashMinWarning: string | null;
+  manualEnabled: boolean;
+  eps: { enabled: boolean; title: string; subtitle: string | null };
 }) {
   const [step, setStep] = useState<Step>("amount");
-  const [method, setMethod] = useState<ManualMethod>("BKASH");
+  const [method, setMethod] = useState<DepositMethod>(eps.enabled ? "EPS" : "BKASH");
+  const [epsState, epsAction, epsPending] = useActionState(startEpsDepositAction, initialEpsState);
+  // EPS checkout: the server opened a payment session — hand the browser over.
+  // Coming back with the browser's Back button restores this page from cache;
+  // the pageshow handler then takes the overlay down over a usable form.
+  const [returnedFrom, setReturnedFrom] = useState<string | null>(null);
+  const redirecting = !!epsState.redirectUrl && returnedFrom !== epsState.redirectUrl;
+  useEffect(() => {
+    const url = epsState.redirectUrl;
+    if (!url) return;
+    window.location.assign(url);
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setReturnedFrom(url);
+    };
+    window.addEventListener("pageshow", onShow);
+    return () => window.removeEventListener("pageshow", onShow);
+  }, [epsState.redirectUrl]);
   const [amount, setAmount] = useState("");
   const [amountError, setAmountError] = useState<string | null>(null);
   const [state, formAction, pending] = useActionState(depositAction, initialState);
@@ -72,9 +96,10 @@ export function DepositForm({
   const iconFor = (m: ManualMethod) =>
     m === "BKASH" ? icons.bkashIcon : m === "NAGAD" ? icons.nagadIcon : icons.rocketIcon;
 
+  const manualMethod: ManualMethod = method === "EPS" ? "BKASH" : method;
   const receivingNumber =
-    method === "BKASH" ? numbers.bkashNumber : method === "NAGAD" ? numbers.nagadNumber : numbers.rocketNumber;
-  const methodIcon = iconFor(method);
+    manualMethod === "BKASH" ? numbers.bkashNumber : manualMethod === "NAGAD" ? numbers.nagadNumber : numbers.rocketNumber;
+  const methodIcon = iconFor(manualMethod);
 
   // Same guard as the order form, judged on the amount being typed.
   const typedAmount = Number(amount);
@@ -89,10 +114,10 @@ export function DepositForm({
   const [wasBelowMin, setWasBelowMin] = useState(bkashBelowMin);
   if (wasBelowMin !== bkashBelowMin) {
     setWasBelowMin(bkashBelowMin);
-    setMethod(methods[0]);
+    if (method !== "EPS") setMethod(methods[0]);
   }
 
-  const bkashWarning = method === "BKASH" && bkashBelowMin ? bkashMinWarning : null;
+  const bkashWarning = manualMethod === "BKASH" && bkashBelowMin ? bkashMinWarning : null;
 
   function handleContinue() {
     if (!amount.trim() || !Number.isInteger(typedAmount) || typedAmount < MIN_AMOUNT) {
@@ -105,6 +130,18 @@ export function DepositForm({
     }
     setAmountError(null);
     setStep("loading");
+  }
+
+  if (redirecting) {
+    return <EpsRedirectOverlay amount={typedAmount} />;
+  }
+
+  if (!manualEnabled && !eps.enabled) {
+    return (
+      <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center text-sm text-gray-600">
+        এই মুহূর্তে কোনো পেমেন্ট মেথড চালু নেই। সাপোর্টে যোগাযোগ করুন।
+      </div>
+    );
   }
 
   if (state.success) {
@@ -211,9 +248,7 @@ export function DepositForm({
   }
 
   return (
-    <form action={formAction} className="deposit-step-in space-y-4">
-      <input type="hidden" name="method" value={method} />
-      <input type="hidden" name="amount" value={amount} />
+    <div className="deposit-step-in space-y-4">
 
       <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 px-4 py-3 text-white">
         <div>
@@ -229,9 +264,57 @@ export function DepositForm({
         </button>
       </div>
       {state.fieldErrors?.amount && <p className="-mt-2 text-sm text-red-600">{state.fieldErrors.amount}</p>}
+      {epsState.fieldErrors?.amount && <p className="-mt-2 text-sm text-red-600">{epsState.fieldErrors.amount}</p>}
 
+      <p className="-mb-1 text-sm font-semibold text-gray-700">পেমেন্ট মেথড বেছে নিন</p>
+
+      {eps.enabled && (
+        <button
+          type="button"
+          onClick={() => setMethod("EPS")}
+          aria-pressed={method === "EPS"}
+          className={`deposit-step-in relative flex w-full items-center gap-3 rounded-xl border-2 px-4 py-3.5 text-left transition ${
+            method === "EPS"
+              ? "border-emerald-500 bg-emerald-50/60 shadow-md"
+              : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+          }`}
+        >
+          <span className="flex h-12 w-20 shrink-0 items-center justify-center">
+            <AutoPayIcon icons={icons} size={28} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-2">
+              <span className="truncate text-sm font-bold text-gray-900">{eps.title}</span>
+              <span className="shrink-0 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none tracking-wide text-white">
+                Instant
+              </span>
+            </span>
+            <span className="mt-1 block text-xs text-gray-500">{eps.subtitle || "ট্রানজেকশন আইডি ছাড়াই সাথে সাথে ব্যালেন্স যোগ"}</span>
+          </span>
+          <span
+            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+              method === "EPS" ? "border-emerald-500 bg-emerald-500 text-white" : "border-gray-300"
+            }`}
+          >
+            {method === "EPS" && (
+              <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" aria-hidden="true">
+                <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </span>
+        </button>
+      )}
+
+      {eps.enabled && manualEnabled && (
+        <div className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+          <span className="h-px flex-1 bg-gray-200" />
+          অথবা ম্যানুয়াল পেমেন্ট
+          <span className="h-px flex-1 bg-gray-200" />
+        </div>
+      )}
+
+      {manualEnabled && (
       <div>
-        <p className="mb-2 text-sm font-semibold text-gray-700">পেমেন্ট মেথড বেছে নিন</p>
         <div className="grid grid-cols-3 gap-2">
           {methods.map((m, i) => {
             const icon = iconFor(m);
@@ -276,15 +359,41 @@ export function DepositForm({
           })}
         </div>
       </div>
+      )}
 
+      {method === "EPS" ? (
+        <form action={epsAction} className="space-y-4">
+          <input type="hidden" name="amount" value={amount} />
+          <AutoPayNotice subtitle={null} />
+          <WalletRow icons={icons} />
+          {epsState.error && <p className="text-sm text-red-600">{epsState.error}</p>}
+          <button
+            type="submit"
+            disabled={epsPending}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3.5 font-bold text-white shadow-lg shadow-emerald-600/25 transition hover:bg-emerald-700 disabled:opacity-60"
+          >
+            {epsPending ? (
+              <>
+                <Spinner />
+                পেমেন্ট পেজ খোলা হচ্ছে...
+              </>
+            ) : (
+              `৳${amount} Pay Now`
+            )}
+          </button>
+        </form>
+      ) : (
+      <form action={formAction} className="space-y-4">
+      <input type="hidden" name="method" value={manualMethod} />
+      <input type="hidden" name="amount" value={amount} />
       <div>
         <PaymentNumberCard
-          method={method}
+          method={manualMethod}
           number={receivingNumber}
           warning={bkashWarning}
           icon={
             methodIcon ? (
-              <Image src={methodIcon} alt={method} width={20} height={20} unoptimized className="h-5 w-5 shrink-0 rounded-full object-cover" />
+              <Image src={methodIcon} alt={manualMethod} width={20} height={20} unoptimized className="h-5 w-5 shrink-0 rounded-full object-cover" />
             ) : undefined
           }
         />
@@ -327,6 +436,8 @@ export function DepositForm({
           "Submit Deposit Request"
         )}
       </button>
-    </form>
+      </form>
+      )}
+    </div>
   );
 }

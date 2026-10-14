@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { orderSchema, guestContactSchema } from "@/lib/validation";
 import { generateOrderNumber, formatOrderNumber } from "@/lib/utils";
-import { getClientIp } from "@/lib/rate-limit";
+import { getClientIp, checkRateLimit } from "@/lib/rate-limit";
 import { isIpBlocked, applyAbuseBlock, detectMaliciousInput } from "@/lib/security";
 import type { ActionState } from "@/lib/actions/auth-actions";
 import { processOrderFulfillment } from "@/lib/order-fulfillment";
@@ -17,8 +17,14 @@ import {
   TRANSACTION_ID_IN_USE_MESSAGE,
 } from "@/lib/transaction-id";
 import { notifyAdmins, createNotification } from "@/lib/notifications";
+import { getPaymentMethodConfig } from "@/lib/payment-methods";
+import { getSiteSettings } from "@/lib/data";
+import { startEpsPayment, EpsStartError } from "@/lib/eps-payments";
 
 export type OrderActionState = ActionState & {
+  // Set for an EPS checkout: the browser goes here to pay; the order itself is
+  // only created once EPS confirms the payment (see eps-payments.ts).
+  redirectUrl?: string;
   order?: {
     orderSerial: number;
     productName: string;
@@ -127,6 +133,55 @@ export async function placeOrderAction(
 
   if (option.stock !== null && option.stock <= 0) {
     return { error: "এই রিচার্জ অপশনটি বর্তমানে Stock Out।" };
+  }
+  if (option.product.stockOut || !option.product.isActive) {
+    return { error: "এই প্রোডাক্টটি বর্তমানে Stock Out, এখন অর্ডার করা যাবে না।" };
+  }
+
+  // Each method can be switched off from /admin/payment-settings; the form
+  // hides a disabled one, and this refuses it even when posted by hand.
+  const methods = await getPaymentMethodConfig();
+  const methodAllowed =
+    paymentMethod === "WALLET" ? methods.wallet.enabled : paymentMethod === "EPS" ? methods.eps.enabled : methods.manual.enabled;
+  if (!methodAllowed) {
+    return { error: "এই পেমেন্ট মেথডটি এই মুহূর্তে বন্ধ আছে। অন্য একটি মেথড বেছে নিন।" };
+  }
+
+  if (paymentMethod === "EPS") {
+    if (!checkRateLimit(`eps-start:${userId ?? ip}`, 8, 10 * 60 * 1000)) {
+      return { error: "অল্প সময়ে অনেকবার চেষ্টা করা হয়েছে। কয়েক মিনিট পর আবার চেষ্টা করুন।" };
+    }
+    const settings = await getSiteSettings();
+    const buyer = userId
+      ? await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true, phone: true } })
+      : null;
+    try {
+      const { redirectUrl } = await startEpsPayment({
+        purpose: "ORDER",
+        amount: option.price,
+        userId,
+        ip,
+        customer: {
+          name: buyer?.name || guestName || "Customer",
+          email: buyer?.email || settings.contactEmail,
+          phone: buyer?.phone || guestPhone || settings.whatsappNumber,
+        },
+        productName: `${option.product.name} - ${option.label}`,
+        productCategory: option.product.category,
+        order: {
+          productId,
+          rechargeOptionId,
+          playerId,
+          playerName: playerName || null,
+          guestName,
+          guestPhone,
+        },
+      });
+      return { success: true, redirectUrl };
+    } catch (error) {
+      if (error instanceof EpsStartError) return { error: error.message };
+      throw error;
+    }
   }
 
   if (paymentMethod !== "WALLET" && !transactionId) {

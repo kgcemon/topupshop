@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -10,12 +10,15 @@ import { OrderStatusBadge } from "@/components/status-badge";
 import { PaymentNumberCard } from "@/components/payment-number-card";
 import { WhatsappLink, WhatsAppIcon } from "@/components/whatsapp-link";
 import { PlayerNameCheck } from "@/components/player-name-check";
+import { AutoPayIcon, AutoPayNotice, EpsRedirectOverlay } from "@/components/auto-pay";
+import type { PaymentMethodConfig } from "@/lib/payment-methods";
 
 type RechargeOption = { id: number; label: string; price: number; stock: number | null };
 
 type PaymentNumbers = { bkashNumber: string; nagadNumber: string; rocketNumber: string };
 
 type ManualMethod = "BKASH" | "NAGAD" | "ROCKET";
+type CheckoutMethod = "WALLET" | "EPS" | ManualMethod;
 
 // bKash leads the manual methods normally; under the admin's minimum amount it
 // drops to the end so the method the customer should actually use comes first.
@@ -46,6 +49,7 @@ export function OrderForm({
   depositEnabled,
   nameCheckEnabled,
   whatsappNumber,
+  methods,
 }: {
   productId: number;
   options: RechargeOption[];
@@ -61,13 +65,35 @@ export function OrderForm({
   depositEnabled: boolean;
   nameCheckEnabled: boolean;
   whatsappNumber: string;
+  methods: PaymentMethodConfig;
 }) {
   const playerIdLabel = inputLabel?.trim() || "এখানে প্লেয়ার আইডি কোড দিন";
   const canOrderAsGuest = !isLoggedIn && allowGuestOrders;
   const mustLogin = !isLoggedIn && !allowGuestOrders;
   const [selectedOptionId, setSelectedOptionId] = useState<number | undefined>(undefined);
-  const [method, setMethod] = useState<"WALLET" | ManualMethod>(isLoggedIn ? "WALLET" : "BKASH");
+  const showWallet = isLoggedIn && methods.wallet.enabled;
+  const showManual = methods.manual.enabled;
+  const showEps = methods.eps.enabled;
+  const methodCount = Number(showWallet) + Number(showManual) + Number(showEps);
+  const [method, setMethod] = useState<CheckoutMethod>(showWallet ? "WALLET" : showEps ? "EPS" : "BKASH");
   const [state, formAction, pending] = useActionState(placeOrderAction, initialState);
+
+  // EPS checkout: the server opened a payment session — hand the browser over.
+  // Coming back with the browser's Back button restores this page from cache;
+  // the pageshow handler then takes the overlay down over a usable form.
+  const [returnedFrom, setReturnedFrom] = useState<string | null>(null);
+  const redirecting = !!state.redirectUrl && returnedFrom !== state.redirectUrl;
+  useEffect(() => {
+    const url = state.redirectUrl;
+    if (!url) return;
+    window.location.assign(url);
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setReturnedFrom(url);
+    };
+    window.addEventListener("pageshow", onShow);
+    return () => window.removeEventListener("pageshow", onShow);
+  }, [state.redirectUrl]);
+  const isManual = method !== "WALLET" && method !== "EPS";
   const pathname = usePathname();
   const loginHref = `/login?callbackUrl=${encodeURIComponent(pathname)}`;
 
@@ -94,7 +120,7 @@ export function OrderForm({
   const [wasBelowMin, setWasBelowMin] = useState(bkashBelowMin);
   if (wasBelowMin !== bkashBelowMin) {
     setWasBelowMin(bkashBelowMin);
-    if (method !== "WALLET") setMethod(manualMethods[0]);
+    if (isManual) setMethod(manualMethods[0]);
   }
 
   // bKash hides its number and shows the admin's warning instead; Nagad and
@@ -109,6 +135,10 @@ export function OrderForm({
         : method === "ROCKET"
           ? paymentIcons.rocketIcon
           : null;
+
+  if (redirecting) {
+    return <EpsRedirectOverlay amount={price} />;
+  }
 
   if (state.success && state.order) {
     const o = state.order;
@@ -329,8 +359,17 @@ export function OrderForm({
               </div>
             ) : (
               <>
-            <div className={`mb-4 grid gap-3 ${isLoggedIn ? "grid-cols-2" : "grid-cols-1"}`}>
-              {isLoggedIn && (
+            {methodCount === 0 && (
+              <p className="mb-4 rounded-md border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-center text-xs text-gray-500">
+                এই মুহূর্তে কোনো পেমেন্ট মেথড চালু নেই। সাপোর্টে যোগাযোগ করুন।
+              </p>
+            )}
+            <div
+              className={`mb-4 grid gap-2 ${
+                methodCount >= 3 ? "grid-cols-3" : methodCount === 2 ? "grid-cols-2" : "grid-cols-1"
+              }`}
+            >
+              {showWallet && (
                 <PayOption
                   active={method === "WALLET"}
                   icon={
@@ -340,12 +379,13 @@ export function OrderForm({
                       <WalletIcon />
                     )
                   }
-                  subtitle="Wallet Pay"
+                  subtitle={methods.wallet.title}
                   onClick={() => setMethod("WALLET")}
                 />
               )}
+              {showManual && (
               <PayOption
-                active={method !== "WALLET"}
+                active={isManual}
                 icon={
                   <Image
                     src="/images/manual-pay-icon.jpg"
@@ -356,15 +396,27 @@ export function OrderForm({
                     className="h-full w-full object-contain"
                   />
                 }
-                subtitle="Manual Pay"
+                subtitle={methods.manual.title}
                 onClick={() => setMethod(manualMethods[0])}
               />
+              )}
+              {showEps && (
+                <PayOption
+                  active={method === "EPS"}
+                  icon={<AutoPayIcon icons={paymentIcons} />}
+                  subtitle={methods.eps.title}
+                  badge="Auto"
+                  onClick={() => setMethod("EPS")}
+                />
+              )}
             </div>
 
-            {method === "WALLET" ? (
+            {methodCount === 0 ? null : method === "WALLET" ? (
               <p className="mb-2 text-sm">
                 আপনার ওয়ালেট ব্যালেন্স: <span className="font-bold">{formatTaka(walletBalance)} টাকা</span>
               </p>
+            ) : method === "EPS" ? (
+              <AutoPayNotice subtitle={methods.eps.subtitle} className="mb-4" />
             ) : (
               <div className="mb-4 space-y-3">
                 <div className="flex gap-2">
@@ -454,10 +506,22 @@ export function OrderForm({
             {isLoggedIn || allowGuestOrders ? (
               <button
                 type="submit"
-                disabled={pending || !selectedOptionId || insufficientWallet || stockOut || selectedOptionOutOfStock}
+                disabled={
+                  pending || methodCount === 0 || !selectedOptionId || insufficientWallet || stockOut || selectedOptionOutOfStock
+                }
                 className="block w-full rounded-md bg-primary-500 py-2 text-center font-bold text-white transition-colors hover:bg-primary-600 disabled:opacity-60"
               >
-                {pending ? "প্রসেসিং..." : isLoggedIn ? "অর্ডার করুন" : "গেস্ট হিসেবে অর্ডার করুন"}
+                {pending
+                  ? method === "EPS"
+                    ? "পেমেন্ট পেজ খোলা হচ্ছে..."
+                    : "প্রসেসিং..."
+                  : method === "EPS"
+                    ? price > 0
+                      ? `৳${formatTaka(price)} Pay Now`
+                      : "Pay Now"
+                    : isLoggedIn
+                      ? "অর্ডার করুন"
+                      : "গেস্ট হিসেবে অর্ডার করুন"}
               </button>
             ) : (
               <Link
@@ -501,22 +565,30 @@ function PayOption({
   active,
   icon,
   subtitle,
+  badge,
   onClick,
 }: {
   active: boolean;
   icon: React.ReactNode;
   subtitle: string;
+  badge?: string;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`payment-option flex flex-col text-center ${active ? "is-active" : ""}`}
+      aria-pressed={active}
+      className={`payment-option relative flex flex-col text-center ${active ? "is-active" : ""}`}
     >
       {active && <SelectedCheck className="rounded-br-lg" />}
+      {badge && (
+        <span className="absolute right-1 top-1 z-[5] rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none tracking-wide text-white">
+          {badge}
+        </span>
+      )}
       <span className="flex h-20 w-full items-center justify-center p-3">{icon}</span>
-      <span className="border-t border-gray-200 bg-gray-100 py-1.5 text-xs font-bold text-gray-700">{subtitle}</span>
+      <span className="truncate border-t border-gray-200 bg-gray-100 px-1 py-1.5 text-xs font-bold text-gray-700">{subtitle}</span>
     </button>
   );
 }

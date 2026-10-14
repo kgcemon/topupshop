@@ -11,6 +11,7 @@ import {
 } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
 import { OrderForm } from "@/components/order-form";
+import { getPaymentMethodConfig } from "@/lib/payment-methods";
 import { ReviewSection } from "@/components/review-section";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -66,11 +67,12 @@ export default async function TopupProductPage({
     redirect(`/topup/${product.id}/${product.slug}`);
   }
 
-  const [session, settings, reviews, reviewStats] = await Promise.all([
+  const [session, settings, reviews, reviewStats, paymentMethods] = await Promise.all([
     auth(),
     getSiteSettings(),
     getApprovedReviewsForProduct(product.id, 8),
     getProductReviewStats(product.id),
+    getPaymentMethodConfig(),
   ]);
 
   let walletBalance = 0;
@@ -180,6 +182,7 @@ export default async function TopupProductPage({
         depositEnabled={settings.depositEnabled}
         nameCheckEnabled={product.nameCheckEnabled}
         whatsappNumber={settings.whatsappNumber}
+        methods={paymentMethods}
         paymentNumbers={{
           bkashNumber: settings.bkashNumber,
           nagadNumber: settings.nagadNumber,

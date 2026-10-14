@@ -5,24 +5,27 @@ import { getSiteSettings } from "@/lib/data";
 import { formatTaka, formatDhakaDateTime } from "@/lib/utils";
 import { DepositForm } from "@/components/deposit-form";
 import { WalletStatusBadge } from "@/components/status-badge";
+import { getPaymentMethodConfig } from "@/lib/payment-methods";
 
 const METHOD_COLORS: Record<string, string> = {
   BKASH: "#E2136E",
   NAGAD: "#F42534",
   ROCKET: "#8C3494",
+  EPS: "#059669",
 };
 
 export default async function DepositPage() {
   const session = await auth();
   const userId = session!.user.id;
 
-  const [settings, transactions] = await Promise.all([
+  const [settings, transactions, paymentMethods] = await Promise.all([
     getSiteSettings(),
     prisma.walletTransaction.findMany({
       where: { userId, type: "DEPOSIT" },
       orderBy: { createdAt: "desc" },
       take: 20,
     }),
+    getPaymentMethodConfig(),
   ]);
 
   return (
@@ -43,6 +46,8 @@ export default async function DepositPage() {
             }}
             bkashMinAmount={settings.bkashMinAmount}
             bkashMinWarning={settings.bkashMinWarning}
+            manualEnabled={paymentMethods.manual.enabled}
+            eps={paymentMethods.eps}
           />
         ) : (
           <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
@@ -85,7 +90,7 @@ export default async function DepositPage() {
                     )}
                     <div>
                       <p className="font-semibold">
-                        {tx.method} · {tx.transactionId}
+                        {tx.method === "EPS" ? paymentMethods.eps.title : tx.method} · {tx.transactionId}
                       </p>
                       <p className="text-xs text-gray-500">{formatDhakaDateTime(tx.createdAt)}</p>
                     </div>
