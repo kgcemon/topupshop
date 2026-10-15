@@ -34,17 +34,20 @@ function WalletBadge({ src, label, color, size }: { src: string | null; label: s
   );
 }
 
-/** The three wallets fanned together with a lightning bolt — reads as "pay any of these, instantly". */
-export function AutoPayIcon({ icons, size = 30 }: { icons: Icons; size?: number }) {
+/** The bKash / Nagad / Rocket logos with a lightning bolt — reads as "pay any of these, instantly". */
+export function AutoPayIcon() {
   return (
-    <span className="relative flex items-center justify-center">
-      <span className="flex -space-x-2.5">
-        {WALLETS.map((w) => (
-          <WalletBadge key={w.key} src={icons[w.key]} label={w.label} color={w.color} size={size} />
-        ))}
-      </span>
-      <span className="absolute -bottom-2 left-1/2 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full bg-amber-400 text-white ring-2 ring-white">
-        <svg viewBox="0 0 24 24" fill="currentColor" className="h-2.5 w-2.5" aria-hidden="true">
+    <span className="relative flex h-full w-full items-center justify-center">
+      <Image
+        src="/images/auto-pay-icon.jpg"
+        alt="bKash, Nagad, Rocket"
+        width={708}
+        height={212}
+        unoptimized
+        className="h-auto max-h-full w-full object-contain"
+      />
+      <span className="absolute -bottom-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-white shadow-sm ring-2 ring-white">
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3" aria-hidden="true">
           <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z" />
         </svg>
       </span>

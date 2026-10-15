@@ -279,8 +279,8 @@ export function DepositForm({
               : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
           }`}
         >
-          <span className="flex h-12 w-20 shrink-0 items-center justify-center">
-            <AutoPayIcon icons={icons} size={28} />
+          <span className="flex h-12 w-28 shrink-0 items-center justify-center">
+            <AutoPayIcon />
           </span>
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-2">
