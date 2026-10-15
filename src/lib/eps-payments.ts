@@ -16,6 +16,7 @@ import { claimTransactionId } from "@/lib/transaction-id";
 import { notifyAdmins, createNotification } from "@/lib/notifications";
 import { processOrderFulfillment } from "@/lib/order-fulfillment";
 import { sendWalletTopupEmail } from "@/lib/mailer";
+import { resolveOrderCost } from "@/lib/profit";
 import { generateOrderNumber, formatOrderNumber, formatTaka } from "@/lib/utils";
 
 // The life of one EPS checkout:
@@ -385,6 +386,7 @@ async function settleEpsPayment(paymentId: string, result: EpsVerifyResult): Pro
           playerId: payment.playerId,
           playerName: payment.playerName,
           amount: payment.amount,
+          costAmount: await resolveOrderCost(tx, option),
           paymentMethod: "EPS",
           transactionId: ledgerTrxId,
           status: autoApprove ? "APPROVED" : "PENDING",

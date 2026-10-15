@@ -500,9 +500,12 @@ export async function addRechargeOptionAction(formData: FormData) {
   const stock = stockRaw === "" ? null : Number(stockRaw);
   const denom = String(formData.get("denom") || "").trim();
   const deliveryMethod = parseDeliveryMethod(formData);
+  const costRaw = String(formData.get("costPrice") || "").trim();
+  const costPrice = costRaw === "" ? null : Number(costRaw);
 
   if (!label || !Number.isFinite(price)) return;
   if (stock !== null && (!Number.isFinite(stock) || stock < 0)) return;
+  if (costPrice !== null && (!Number.isFinite(costPrice) || costPrice < 0)) return;
 
   const last = await prisma.rechargeOption.findFirst({
     where: { productId },
@@ -517,6 +520,7 @@ export async function addRechargeOptionAction(formData: FormData) {
       stock,
       denom: denom || null,
       deliveryMethod,
+      costPrice: costPrice === null ? null : Math.round(costPrice * 100) / 100,
       sortOrder: (last?.sortOrder ?? 0) + 1,
     },
   });
@@ -589,6 +593,28 @@ export async function updateRechargeOptionPriceAction(formData: FormData) {
 
   revalidatePath(`/admin/products/${productId}/edit`);
   revalidatePath("/");
+}
+
+// Blank clears the rate (back to the UniPin denom costs, or "cost not set").
+// Only orders created afterwards pick it up — each order keeps the cost it
+// was created with (Order.costAmount).
+export async function updateRechargeOptionCostAction(formData: FormData) {
+  await requireAdmin();
+  const optionId = Number(formData.get("optionId"));
+  const productId = formData.get("productId");
+  const costRaw = String(formData.get("costPrice") || "").trim();
+  const costPrice = costRaw === "" ? null : Number(costRaw);
+
+  if (!Number.isFinite(optionId)) return;
+  if (costPrice !== null && (!Number.isFinite(costPrice) || costPrice < 0)) return;
+
+  await prisma.rechargeOption.update({
+    where: { id: optionId },
+    data: { costPrice: costPrice === null ? null : Math.round(costPrice * 100) / 100 },
+  });
+
+  revalidatePath(`/admin/products/${productId}/edit`);
+  revalidatePath("/admin/profit");
 }
 
 // Swaps the option with its previous/next sibling (ordered by sortOrder,

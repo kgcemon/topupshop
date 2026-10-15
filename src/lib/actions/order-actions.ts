@@ -20,6 +20,7 @@ import { notifyAdmins, createNotification } from "@/lib/notifications";
 import { getPaymentMethodConfig } from "@/lib/payment-methods";
 import { getSiteSettings } from "@/lib/data";
 import { startEpsPayment, EpsStartError } from "@/lib/eps-payments";
+import { resolveOrderCost } from "@/lib/profit";
 
 export type OrderActionState = ActionState & {
   // Set for an EPS checkout: the browser goes here to pay; the order itself is
@@ -358,6 +359,7 @@ export async function placeOrderAction(
           playerId,
           playerName: playerName || null,
           amount: option.price,
+          costAmount: await resolveOrderCost(tx, option),
           paymentMethod,
           transactionId: paymentMethod === "WALLET" ? null : transactionId,
           status: paymentMethod === "WALLET" || autoApproved ? "APPROVED" : "PENDING",

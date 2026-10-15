@@ -7,12 +7,14 @@ import {
   deleteRechargeOptionAction,
   updateRechargeOptionStockAction,
   updateRechargeOptionPriceAction,
+  updateRechargeOptionCostAction,
   updateRechargeOptionDenomAction,
   updateRechargeOptionDeliveryMethodAction,
   moveRechargeOptionAction,
 } from "@/lib/actions/admin-actions";
 import { formatTaka } from "@/lib/utils";
 import { getAllSections } from "@/lib/data";
+import { getDenomCostMap, getEffectiveCost, toNumber } from "@/lib/profit";
 
 export default async function EditProductPage({
   params,
@@ -21,12 +23,13 @@ export default async function EditProductPage({
 }) {
   const { id } = await params;
   const productId = Number(id);
-  const [product, sections] = await Promise.all([
+  const [product, sections, denomCosts] = await Promise.all([
     prisma.product.findUnique({
       where: { id: productId },
       include: { rechargeOptions: { orderBy: { sortOrder: "asc" } } },
     }),
     getAllSections(),
+    getDenomCostMap(),
   ]);
 
   if (!product) notFound();
@@ -66,6 +69,8 @@ export default async function EditProductPage({
             const outOfStock = option.stock !== null && option.stock <= 0;
             const isFirst = index === 0;
             const isLast = index === product.rechargeOptions.length - 1;
+            const ownCost = toNumber(option.costPrice);
+            const effectiveCost = getEffectiveCost(option, denomCosts);
             return (
               <div key={option.id} className="space-y-2 rounded-lg border border-gray-200 p-3 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -100,6 +105,20 @@ export default async function EditProductPage({
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-bold">{formatTaka(option.price)} TK</span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                        effectiveCost === null
+                          ? "bg-amber-100 text-amber-700"
+                          : option.price - effectiveCost < 0
+                            ? "bg-red-100 text-red-700"
+                            : "bg-emerald-100 text-emerald-700"
+                      }`}
+                    >
+                      {effectiveCost === null
+                        ? "খরচ সেট নেই"
+                        : `খরচ ${formatTaka(effectiveCost)} · লাভ ${formatTaka(Math.round((option.price - effectiveCost) * 100) / 100)}`}
+                      {effectiveCost !== null && ownCost === null ? " (Denom রেট)" : ""}
+                    </span>
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-bold ${
                         option.stock === null
@@ -164,6 +183,23 @@ export default async function EditProductPage({
                       Update Price
                     </button>
                   </form>
+                  <form action={updateRechargeOptionCostAction} className="flex items-center gap-1">
+                    <input type="hidden" name="optionId" value={option.id} />
+                    <input type="hidden" name="productId" value={product.id} />
+                    <input
+                      name="costPrice"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      placeholder="কেনা দাম"
+                      title="এই প্যাকেজ কিনতে আপনার কত টাকা খরচ হয় — খালি রাখলে UniPin denom রেট ব্যবহার হবে"
+                      defaultValue={ownCost ?? ""}
+                      className="w-24 rounded-md border border-gray-300 px-2 py-1 text-xs"
+                    />
+                    <button className="rounded-md border border-gray-300 px-2 py-1 text-xs font-bold hover:bg-gray-50">
+                      Update Cost
+                    </button>
+                  </form>
                   <form action={updateRechargeOptionStockAction} className="flex items-center gap-1">
                     <input type="hidden" name="optionId" value={option.id} />
                     <input type="hidden" name="productId" value={product.id} />
@@ -226,6 +262,17 @@ export default async function EditProductPage({
               type="number"
               required
               min={0}
+              className="w-28 rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold">কেনা দাম (TK, ঐচ্ছিক)</label>
+            <input
+              name="costPrice"
+              type="number"
+              min={0}
+              step="0.01"
+              placeholder="খরচ"
               className="w-28 rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
