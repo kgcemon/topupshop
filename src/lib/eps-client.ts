@@ -77,10 +77,18 @@ function str(obj: Record<string, unknown>, name: string): string {
   return v == null ? "" : String(v).trim();
 }
 
+type EpsResponse = {
+  status: number;
+  text: string;
+  json: Record<string, unknown> | null;
+  /** Where EPS tried to send us on a 3xx (or where a followed redirect ended up). */
+  location: string;
+};
+
 async function callEps(
   url: string,
   init: { method: "GET" | "POST"; headers: Record<string, string>; body?: unknown }
-): Promise<{ status: number; text: string; json: Record<string, unknown> | null }> {
+): Promise<EpsResponse> {
   let response: Response;
   try {
     response = await fetch(url, {
@@ -89,6 +97,10 @@ async function callEps(
       body: init.body ? JSON.stringify(init.body) : undefined,
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       cache: "no-store",
+      // EPS answers an expired/revoked bearer with a 302 to its
+      // /Identity/Account/Login page instead of a 401. Following it lands on a
+      // 404 that looks like an outage, so keep the 3xx and judge it ourselves.
+      redirect: "manual",
     });
   } catch (error) {
     const reason = error instanceof Error && error.name === "TimeoutError" ? "সময়সীমা পেরিয়ে গেছে" : String(error);
@@ -103,7 +115,8 @@ async function callEps(
   } catch {
     // Non-JSON (an HTML error page, say) — callers report the status instead.
   }
-  return { status: response.status, text, json };
+  const location = response.headers.get("location") || (response.redirected ? response.url : "");
+  return { status: response.status, text, json, location };
 }
 
 // ---------- Token (API 01) ----------
@@ -208,26 +221,55 @@ export async function clearEpsTokenCache() {
     .catch(() => undefined);
 }
 
+/** Drops one specific token from the caches, leaving a newer one alone. */
+async function forgetToken(token: string) {
+  if (globalForEps.epsToken?.token === token) globalForEps.epsToken = undefined;
+  await prisma.paymentGatewaySetting
+    .updateMany({ where: { id: 1, epsToken: token }, data: { epsToken: null, epsTokenExpiry: null } })
+    .catch(() => undefined);
+}
+
 /**
- * Runs an authorised call, and if EPS says the token is no longer good (401,
- * or an expired/invalid-token error body), mints a new one and tries exactly
- * once more. This is what keeps an expired token from ever surfacing to the
- * customer as a failed checkout or a broken return page.
+ * Runs an authorised call, and if EPS says the token is no longer good (401/403,
+ * a redirect to its login page, or an expired/invalid-token error body), drops
+ * that token, gets a new one and tries exactly once more. This is what keeps an
+ * expired token from ever surfacing to the customer as a failed checkout or a
+ * broken return page.
  */
 async function withToken<T>(
   c: EpsCredentials,
-  run: (token: string) => Promise<{ status: number; text: string; json: Record<string, unknown> | null }>,
-  parse: (res: { status: number; text: string; json: Record<string, unknown> | null }) => T
+  run: (token: string) => Promise<EpsResponse>,
+  parse: (res: EpsResponse) => T
 ): Promise<T> {
-  let res = await run(await getEpsToken(c));
+  const first = await getEpsToken(c);
+  let res = await run(first);
   if (isTokenRejected(res)) {
-    res = await run(await getEpsToken(c, { force: true }));
+    console.warn(`[eps] token rejected (HTTP ${res.status}${res.location ? ` -> ${res.location}` : ""}), fetching a new one`);
+    await forgetToken(first);
+    // If a concurrent request already replaced the dead token, reuse its
+    // replacement instead of minting yet another one.
+    const cached = globalForEps.epsToken;
+    const second = await getEpsToken(c, { force: !cached || cached.token === first });
+    res = await run(second);
+    if (isTokenRejected(res)) {
+      // Never leave a token EPS refuses in the cache for the next customer.
+      await forgetToken(second);
+      throw new EpsError(
+        `EPS নতুন টোকেনও গ্রহণ করেনি (HTTP ${res.status}${res.location ? `, ${res.location}` : ""})`,
+        res.status,
+        res.text.slice(0, 2000)
+      );
+    }
   }
   return parse(res);
 }
 
-function isTokenRejected(res: { status: number; text: string }) {
+function isTokenRejected(res: EpsResponse) {
   if (res.status === 401 || res.status === 403) return true;
+  // A redirect from a JSON API means "go log in" — EPS's way of saying the
+  // bearer is expired or revoked.
+  if (res.status >= 300 && res.status < 400) return true;
+  if (/\/account\/login/i.test(res.location)) return true;
   return /token.{0,20}(expired|invalid)|unauthori[sz]ed/i.test(res.text) && res.status >= 400;
 }
 
