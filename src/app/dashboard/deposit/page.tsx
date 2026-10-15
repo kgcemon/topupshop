@@ -30,7 +30,7 @@ export default async function DepositPage() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <div className="rounded-xl border border-gray-200 bg-white p-6">
+      <div className="min-w-0 rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
         <h1 className="mb-4 text-lg font-bold">Deposit Request</h1>
         {settings.depositEnabled ? (
           <DepositForm
@@ -47,6 +47,7 @@ export default async function DepositPage() {
             bkashMinAmount={settings.bkashMinAmount}
             bkashMinWarning={settings.bkashMinWarning}
             manualEnabled={paymentMethods.manual.enabled}
+            manualTitle={paymentMethods.manual.title}
             eps={paymentMethods.eps}
           />
         ) : (
@@ -60,7 +61,7 @@ export default async function DepositPage() {
         )}
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6">
+      <div className="min-w-0 rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
         <h2 className="mb-4 text-lg font-bold">Deposit History</h2>
         {transactions.length === 0 ? (
           <p className="text-sm text-gray-500">কোনো ডিপোজিট রিকোয়েস্ট নেই।</p>
@@ -76,8 +77,8 @@ export default async function DepositPage() {
                       ? settings.rocketIcon
                       : settings.walletIcon;
               return (
-                <div key={tx.id} className="flex items-center justify-between rounded-lg border border-gray-100 p-3 text-sm">
-                  <div className="flex items-center gap-2">
+                <div key={tx.id} className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 p-3 text-sm">
+                  <div className="flex min-w-0 items-center gap-2">
                     {icon ? (
                       <Image src={icon} alt={tx.method} width={20} height={20} unoptimized className="h-5 w-5 shrink-0 rounded-full object-cover" />
                     ) : (
@@ -88,15 +89,15 @@ export default async function DepositPage() {
                         {tx.method.charAt(0)}
                       </span>
                     )}
-                    <div>
-                      <p className="font-semibold">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">
                         {tx.method === "EPS" ? paymentMethods.eps.title : tx.method} · {tx.transactionId}
                       </p>
                       <p className="text-xs text-gray-500">{formatDhakaDateTime(tx.createdAt)}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold">{formatTaka(tx.amount)} TK</span>
+                  <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-3">
+                    <span className="whitespace-nowrap font-bold">{formatTaka(tx.amount)} TK</span>
                     <WalletStatusBadge status={tx.status} />
                   </div>
                 </div>

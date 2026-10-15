@@ -4,36 +4,6 @@ import { formatTaka } from "@/lib/utils";
 // Shared pieces of the EPS "Auto Pay" method, used by the topup checkout and
 // the wallet deposit form.
 
-type Icons = { bkashIcon: string | null; nagadIcon: string | null; rocketIcon: string | null };
-
-const WALLETS = [
-  { key: "bkashIcon", label: "bKash", color: "#E2136E" },
-  { key: "nagadIcon", label: "Nagad", color: "#F42534" },
-  { key: "rocketIcon", label: "Rocket", color: "#8C3494" },
-] as const;
-
-function WalletBadge({ src, label, color, size }: { src: string | null; label: string; color: string; size: number }) {
-  return src ? (
-    <Image
-      src={src}
-      alt={label}
-      width={size}
-      height={size}
-      unoptimized
-      className="rounded-full bg-white object-cover ring-2 ring-white"
-      style={{ width: size, height: size }}
-    />
-  ) : (
-    <span
-      className="flex items-center justify-center rounded-full font-bold text-white ring-2 ring-white"
-      style={{ width: size, height: size, backgroundColor: color, fontSize: size * 0.42 }}
-      aria-label={label}
-    >
-      {label.charAt(0)}
-    </span>
-  );
-}
-
 /**
  * The admin's uploaded Auto Pay image (or the bundled bKash / Nagad / Rocket
  * strip) with a lightning bolt — reads as "pay any of these, instantly".
@@ -54,19 +24,6 @@ export function AutoPayIcon({ src }: { src?: string | null }) {
           <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z" />
         </svg>
       </span>
-    </span>
-  );
-}
-
-export function WalletRow({ icons }: { icons: Icons }) {
-  return (
-    <span className="flex items-center gap-1.5">
-      {WALLETS.map((w) => (
-        <span key={w.key} className="flex items-center gap-1 rounded-full border border-gray-200 bg-white py-0.5 pl-0.5 pr-2 text-[11px] font-semibold text-gray-700">
-          <WalletBadge src={icons[w.key]} label={w.label} color={w.color} size={16} />
-          {w.label}
-        </span>
-      ))}
     </span>
   );
 }

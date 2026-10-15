@@ -6,7 +6,8 @@ import { depositAction } from "@/lib/actions/wallet-actions";
 import type { ActionState } from "@/lib/actions/auth-actions";
 import { PaymentNumberCard } from "@/components/payment-number-card";
 import { startEpsDepositAction, type EpsStartState } from "@/lib/actions/eps-actions";
-import { AutoPayIcon, AutoPayNotice, EpsRedirectOverlay, WalletRow } from "@/components/auto-pay";
+import { AutoPayIcon, AutoPayNotice, EpsRedirectOverlay } from "@/components/auto-pay";
+import { PayOption } from "@/components/pay-option";
 
 const initialState: ActionState = {};
 const initialEpsState: EpsStartState = {};
@@ -56,6 +57,7 @@ export function DepositForm({
   bkashMinAmount,
   bkashMinWarning,
   manualEnabled,
+  manualTitle,
   eps,
 }: {
   numbers: { bkashNumber: string; nagadNumber: string; rocketNumber: string };
@@ -63,10 +65,11 @@ export function DepositForm({
   bkashMinAmount: number;
   bkashMinWarning: string | null;
   manualEnabled: boolean;
+  manualTitle: string;
   eps: { enabled: boolean; title: string; subtitle: string | null; icon: string | null };
 }) {
   const [step, setStep] = useState<Step>("amount");
-  const [method, setMethod] = useState<DepositMethod>(eps.enabled ? "EPS" : "BKASH");
+  const [method, setMethod] = useState<DepositMethod>(manualEnabled ? "BKASH" : "EPS");
   const [epsState, epsAction, epsPending] = useActionState(startEpsDepositAction, initialEpsState);
   // EPS checkout: the server opened a payment session — hand the browser over.
   // Coming back with the browser's Back button restores this page from cache;
@@ -268,53 +271,39 @@ export function DepositForm({
 
       <p className="-mb-1 text-sm font-semibold text-gray-700">পেমেন্ট মেথড বেছে নিন</p>
 
-      {eps.enabled && (
-        <button
-          type="button"
-          onClick={() => setMethod("EPS")}
-          aria-pressed={method === "EPS"}
-          className={`deposit-step-in relative flex w-full items-center gap-3 rounded-xl border-2 px-4 py-3.5 text-left transition ${
-            method === "EPS"
-              ? "border-emerald-500 bg-emerald-50/60 shadow-md"
-              : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-          }`}
-        >
-          <span className="flex h-12 w-28 shrink-0 items-center justify-center">
-            <AutoPayIcon src={eps.icon} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="flex items-center gap-2">
-              <span className="truncate text-sm font-bold text-gray-900">{eps.title}</span>
-              <span className="shrink-0 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none tracking-wide text-white">
-                Instant
-              </span>
-            </span>
-            <span className="mt-1 block text-xs text-gray-500">{eps.subtitle || "ট্রানজেকশন আইডি ছাড়াই সাথে সাথে ব্যালেন্স যোগ"}</span>
-          </span>
-          <span
-            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-              method === "EPS" ? "border-emerald-500 bg-emerald-500 text-white" : "border-gray-300"
-            }`}
-          >
-            {method === "EPS" && (
-              <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" aria-hidden="true">
-                <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-          </span>
-        </button>
-      )}
+      {/* Same cards as the topup checkout: Manual first, then Auto (EPS). */}
+      <div className={`grid gap-2 sm:gap-3 ${manualEnabled && eps.enabled ? "grid-cols-2" : "grid-cols-1"}`}>
+        {manualEnabled && (
+          <PayOption
+            active={method !== "EPS"}
+            icon={
+              <Image
+                src="/images/manual-pay-icon.jpg"
+                alt="Manual Pay"
+                width={140}
+                height={80}
+                unoptimized
+                className="h-full w-full object-contain"
+              />
+            }
+            subtitle={manualTitle}
+            onClick={() => {
+              if (method === "EPS") setMethod(methods[0]);
+            }}
+          />
+        )}
+        {eps.enabled && (
+          <PayOption
+            active={method === "EPS"}
+            icon={<AutoPayIcon src={eps.icon} />}
+            subtitle={eps.title}
+            badge="Auto"
+            onClick={() => setMethod("EPS")}
+          />
+        )}
+      </div>
 
-      {eps.enabled && manualEnabled && (
-        <div className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-          <span className="h-px flex-1 bg-gray-200" />
-          অথবা ম্যানুয়াল পেমেন্ট
-          <span className="h-px flex-1 bg-gray-200" />
-        </div>
-      )}
-
-      {manualEnabled && (
-      <div>
+      {method !== "EPS" && (
         <div className="grid grid-cols-3 gap-2">
           {methods.map((m, i) => {
             const icon = iconFor(m);
@@ -329,7 +318,7 @@ export function DepositForm({
                   borderColor: active ? METHOD_COLORS[m] : undefined,
                   backgroundColor: active ? `${METHOD_COLORS[m]}0F` : undefined,
                 }}
-                className={`deposit-step-in relative flex flex-col items-center gap-1.5 rounded-xl border-2 px-2 py-3 text-sm font-bold transition ${
+                className={`deposit-step-in relative flex min-w-0 flex-col items-center gap-1.5 rounded-xl border-2 px-1 py-2.5 text-xs font-bold transition sm:px-2 sm:py-3 sm:text-sm ${
                   active ? "shadow-md" : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
                 }`}
               >
@@ -344,28 +333,28 @@ export function DepositForm({
                   </span>
                 )}
                 {icon ? (
-                  <Image src={icon} alt={m} width={36} height={36} unoptimized className="h-9 w-9 rounded-full object-cover" />
+                  <Image src={icon} alt={m} width={36} height={36} unoptimized className="h-8 w-8 rounded-full object-cover sm:h-9 sm:w-9" />
                 ) : (
                   <span
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white sm:h-9 sm:w-9"
                     style={{ backgroundColor: METHOD_COLORS[m] }}
                   >
                     {m.charAt(0)}
                   </span>
                 )}
-                <span style={{ color: active ? METHOD_COLORS[m] : undefined }}>{METHOD_LABELS[m]}</span>
+                <span className="max-w-full truncate" style={{ color: active ? METHOD_COLORS[m] : undefined }}>
+                  {METHOD_LABELS[m]}
+                </span>
               </button>
             );
           })}
         </div>
-      </div>
       )}
 
       {method === "EPS" ? (
         <form action={epsAction} className="space-y-4">
           <input type="hidden" name="amount" value={amount} />
-          <AutoPayNotice subtitle={null} />
-          <WalletRow icons={icons} />
+          <AutoPayNotice subtitle={eps.subtitle} />
           {epsState.error && <p className="text-sm text-red-600">{epsState.error}</p>}
           <button
             type="submit"
