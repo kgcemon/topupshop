@@ -29,6 +29,7 @@ function buildNav(
     { href: "/admin/products", label: "Products", badge: 0 },
     { href: "/admin/market", label: "Market", badge: pendingMarketListings },
     { href: "/admin/unipin", label: "Unipin", badge: 0 },
+    { href: "/admin/alerts", label: "Alerts", badge: 0 },
     { href: "/admin/shell", label: "Garena Shell", badge: 0 },
     { href: "/admin/payment-settings", label: "Payment Settings", badge: 0 },
     { href: "/admin/api-settings", label: "API Settings", badge: 0 },

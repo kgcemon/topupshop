@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { claimUnipinCodes } from "@/lib/unipin-fulfillment";
 import { redeemUnipinCode } from "@/lib/unipin-client";
+import { queueUnipinLowStockCheck } from "@/lib/alerts";
 import type { FulfillmentResult } from "@/lib/order-fulfillment";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -57,6 +58,7 @@ export async function processUnipinFulfillmentJob(orderId: string): Promise<Fulf
     });
 
     const claimResult = await claimUnipinCodes(orderId);
+    if (claimResult.status === "claimed" || claimResult.status === "insufficient") queueUnipinLowStockCheck();
 
     if (claimResult.status === "not-applicable") {
       // Not a terminal state: the recharge option's denom recipe can be

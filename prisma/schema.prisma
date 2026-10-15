@@ -931,3 +931,39 @@ model EpsPayment {
   @@index([status, createdAt])
   @@index([userId, createdAt])
 }
+
+// Admin alerts (/admin/alerts). Single row (id = 1), same singleton pattern as
+// SiteSetting. Kept apart from SiteSetting because it holds the Messenger page
+// token, which must never travel with the public site settings.
+//
+// Messenger: the shop's Facebook Page sends the alert to the admin's own
+// Messenger account. The admin links it by sending the Page the one-time
+// `messengerConnectCode`; the webhook (/api/messenger/webhook) then stores
+// their page-scoped id as the recipient.
+model AlertSetting {
+  id Int @id @default(1)
+
+  lowStockEnabled   Boolean @default(false)
+  lowStockThreshold Int     @default(2) // alert when a denom's UNUSED codes drop below this
+
+  messengerPageToken     String?   @db.Text
+  messengerAppSecret     String?   @db.Text // verifies X-Hub-Signature-256 on webhook calls
+  messengerVerifyToken   String?   @db.Text // echoed back by Meta when the webhook is registered
+  messengerConnectCode   String?
+  messengerRecipientId   String? // admin's page-scoped id (PSID)
+  messengerConnectedAt   DateTime?
+  messengerLastInboundAt DateTime? // last message the admin sent the Page (opens Meta's 24h window)
+  messengerLastSentAt    DateTime?
+  messengerLastError     String?   @db.Text
+
+  updatedAt DateTime @updatedAt
+}
+
+// One row per UniPin denom that has already been alerted as low, so the
+// admin hears about each drop once. Deleted when the denom is restocked to the
+// threshold or above, which re-arms the alert.
+model UnipinStockAlert {
+  denom      String   @id
+  unused     Int
+  notifiedAt DateTime @default(now())
+}

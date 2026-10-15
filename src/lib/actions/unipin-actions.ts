@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { queueUnipinLowStockCheck } from "@/lib/alerts";
 
 async function requireAdmin() {
   const session = await auth();
@@ -74,6 +75,8 @@ export async function addUnipinCodesAction(formData: FormData) {
     });
   }
 
+  // Restocking re-arms the low-stock alert for this denom.
+  queueUnipinLowStockCheck();
   revalidatePath("/admin/unipin");
   const params = new URLSearchParams({
     added: String(toInsert.length),
@@ -92,6 +95,7 @@ export async function deleteUnipinCodeAction(formData: FormData) {
 
   // Only an unused code can be deleted — a used one is tied to a delivered order.
   await prisma.unipinCode.deleteMany({ where: { id: codeId, status: "UNUSED" } });
+  queueUnipinLowStockCheck();
 
   revalidatePath("/admin/unipin");
 }
