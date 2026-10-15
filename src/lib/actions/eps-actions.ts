@@ -5,6 +5,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSiteSettings } from "@/lib/data";
+import { saveUploadedImage } from "@/lib/upload";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import type { ActionState } from "@/lib/actions/auth-actions";
 import { getPaymentMethodConfig } from "@/lib/payment-methods";
@@ -181,6 +182,17 @@ export async function updatePaymentGatewaySettingsAction(_prev: ActionState, for
 
   const d = parsed.data;
   const current = await getPaymentGatewaySetting();
+
+  // Kept at its original size (not icon-resized) — the logo strip is wide.
+  let epsIcon = formData.get("epsIconRemove") === "on" ? null : current.epsIcon;
+  const epsIconFile = formData.get("epsIconFile");
+  if (epsIconFile instanceof File && epsIconFile.size > 0) {
+    try {
+      epsIcon = (await saveUploadedImage(epsIconFile, "eps-icon")) ?? epsIcon;
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : "আইকন আপলোড ব্যর্থ হয়েছে" };
+    }
+  }
   const next = {
     walletPayEnabled: d.walletPayEnabled,
     walletPayTitle: d.walletPayTitle,
@@ -189,6 +201,7 @@ export async function updatePaymentGatewaySettingsAction(_prev: ActionState, for
     epsEnabled: d.epsEnabled,
     epsTitle: d.epsTitle,
     epsSubtitle: d.epsSubtitle || null,
+    epsIcon,
     epsApiBaseUrl: d.epsApiBaseUrl,
     epsUserName: d.epsUserName || null,
     epsMerchantId: d.epsMerchantId || null,

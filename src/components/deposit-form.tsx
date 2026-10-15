@@ -63,7 +63,7 @@ export function DepositForm({
   bkashMinAmount: number;
   bkashMinWarning: string | null;
   manualEnabled: boolean;
-  eps: { enabled: boolean; title: string; subtitle: string | null };
+  eps: { enabled: boolean; title: string; subtitle: string | null; icon: string | null };
 }) {
   const [step, setStep] = useState<Step>("amount");
   const [method, setMethod] = useState<DepositMethod>(eps.enabled ? "EPS" : "BKASH");
@@ -280,7 +280,7 @@ export function DepositForm({
           }`}
         >
           <span className="flex h-12 w-28 shrink-0 items-center justify-center">
-            <AutoPayIcon />
+            <AutoPayIcon src={eps.icon} />
           </span>
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-2">

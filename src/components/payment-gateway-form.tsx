@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import Image from "next/image";
 import { updatePaymentGatewaySettingsAction, testEpsConnectionAction } from "@/lib/actions/eps-actions";
 import type { ActionState } from "@/lib/actions/auth-actions";
 import { CopyButton } from "@/components/copy-button";
@@ -13,6 +14,7 @@ type GatewayValues = {
   epsEnabled: boolean;
   epsTitle: string;
   epsSubtitle: string | null;
+  epsIcon: string | null;
   epsApiBaseUrl: string;
   epsUserName: string | null;
   epsMerchantId: string | null;
@@ -78,6 +80,7 @@ export function PaymentGatewayForm({ defaultValues, returnUrlExample }: { defaul
             />
             {e.epsSubtitle && <p className="mt-1 text-sm text-red-600">{e.epsSubtitle}</p>}
           </div>
+          <EpsIconField current={defaultValues.epsIcon} />
         </Section>
 
         <Section title="EPS গেটওয়ে ক্রেডেনশিয়াল">
@@ -149,6 +152,47 @@ export function PaymentGatewayForm({ defaultValues, returnUrlExample }: { defaul
         {testState.success && <p className="w-full text-sm font-semibold text-green-600">✓ সংযোগ সফল — EPS টোকেন পাওয়া গেছে।</p>}
         {testState.error && <p className="w-full break-words text-sm text-red-600">{testState.error}</p>}
       </form>
+    </div>
+  );
+}
+
+const DEFAULT_EPS_ICON = "/images/auto-pay-icon.jpg";
+
+function EpsIconField({ current }: { current: string | null }) {
+  const [preview, setPreview] = useState<string | null>(null);
+  const [remove, setRemove] = useState(false);
+  const shown = preview ?? (remove ? null : current) ?? DEFAULT_EPS_ICON;
+
+  return (
+    <div>
+      <label className="mb-1 block text-sm font-semibold" htmlFor="epsIconFile">
+        Auto Pay আইকন <span className="font-normal text-gray-400">(ঐচ্ছিক)</span>
+      </label>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="flex h-16 w-44 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white p-2">
+          <Image src={shown} alt="Auto Pay আইকন" width={160} height={48} unoptimized className="h-full w-full object-contain" />
+        </span>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <input
+            id="epsIconFile"
+            type="file"
+            name="epsIconFile"
+            accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
+            onChange={(ev) => {
+              const file = ev.target.files?.[0];
+              setPreview(file ? URL.createObjectURL(file) : null);
+            }}
+            className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-xs file:mr-2 file:rounded-md file:border-0 file:bg-primary-500 file:px-2 file:py-1 file:text-xs file:text-white"
+          />
+          <p className="text-xs text-gray-500">চওড়া ছবি সবচেয়ে ভালো দেখায় (যেমন ৭০০×২০০)। খালি রাখলে আগেরটিই থাকবে।</p>
+          {current && !preview && (
+            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-600">
+              <input type="checkbox" name="epsIconRemove" checked={remove} onChange={(ev) => setRemove(ev.target.checked)} />
+              ডিফল্ট আইকনে ফিরে যান
+            </label>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

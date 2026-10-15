@@ -4,7 +4,7 @@ import { credentialsFrom, getPaymentGatewaySetting } from "@/lib/eps-client";
 export type PaymentMethodConfig = {
   wallet: { enabled: boolean; title: string };
   manual: { enabled: boolean; title: string };
-  eps: { enabled: boolean; title: string; subtitle: string | null };
+  eps: { enabled: boolean; title: string; subtitle: string | null; icon: string | null };
 };
 
 /**
@@ -22,6 +22,7 @@ export const getPaymentMethodConfig = cache(async (): Promise<PaymentMethodConfi
       enabled: s.epsEnabled && credentialsFrom(s) !== null,
       title: s.epsTitle || "Auto Pay",
       subtitle: s.epsSubtitle || null,
+      icon: s.epsIcon || null,
     },
   };
 });

@@ -25,6 +25,7 @@ export default async function AdminPaymentSettingsPage() {
             epsEnabled: gateway.epsEnabled,
             epsTitle: gateway.epsTitle,
             epsSubtitle: gateway.epsSubtitle,
+            epsIcon: gateway.epsIcon,
             epsApiBaseUrl: gateway.epsApiBaseUrl,
             epsUserName: gateway.epsUserName,
             epsMerchantId: gateway.epsMerchantId,

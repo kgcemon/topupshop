@@ -403,7 +403,7 @@ export function OrderForm({
               {showEps && (
                 <PayOption
                   active={method === "EPS"}
-                  icon={<AutoPayIcon />}
+                  icon={<AutoPayIcon src={methods.eps.icon} />}
                   subtitle={methods.eps.title}
                   badge="Auto"
                   onClick={() => setMethod("EPS")}

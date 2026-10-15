@@ -836,6 +836,7 @@ model PaymentGatewaySetting {
   epsEnabled       Boolean @default(false)
   epsTitle         String  @default("Auto Pay")
   epsSubtitle      String? @db.Text // short line under the method, e.g. "bKash, Nagad, Rocket — instant"
+  epsIcon          String? // uploaded Auto Pay image; null = the bundled bKash/Nagad/Rocket strip
 
   epsApiBaseUrl  String    @default("https://pgapi.eps.com.bd/v1")
   epsUserName    String?   @db.Text

@@ -34,12 +34,15 @@ function WalletBadge({ src, label, color, size }: { src: string | null; label: s
   );
 }
 
-/** The bKash / Nagad / Rocket logos with a lightning bolt — reads as "pay any of these, instantly". */
-export function AutoPayIcon() {
+/**
+ * The admin's uploaded Auto Pay image (or the bundled bKash / Nagad / Rocket
+ * strip) with a lightning bolt — reads as "pay any of these, instantly".
+ */
+export function AutoPayIcon({ src }: { src?: string | null }) {
   return (
     <span className="relative flex h-full w-full items-center justify-center">
       <Image
-        src="/images/auto-pay-icon.jpg"
+        src={src || "/images/auto-pay-icon.jpg"}
         alt="bKash, Nagad, Rocket"
         width={708}
         height={212}
