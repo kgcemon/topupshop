@@ -366,13 +366,12 @@ async function settleEpsPayment(paymentId: string, result: EpsVerifyResult): Pro
       });
       const inStock = stockReserved.count > 0;
       const underpaid = paid < payment.amount;
-      const excess = paid > payment.amount && payment.userId ? paid - payment.amount : 0;
 
+      // Paying more than the order price is not refunded to the wallet: the
+      // order simply goes through, and the note records what EPS charged.
       const notes: string[] = [`EPS অটো পেমেন্ট${via}: ৳${paid} পরিশোধিত${epsRef}`];
       if (underpaid) notes.push(`⚠️ কম পরিশোধ: অর্ডার মূল্য ৳${payment.amount}, EPS অনুযায়ী পরিশোধ ৳${paid} — ম্যানুয়ালি যাচাই করুন।`);
       if (!inStock) notes.push("⚠️ পেমেন্টের সময় প্যাকেজটি Stock Out ছিল — ম্যানুয়ালি প্রসেস করুন।");
-      if (excess > 0) notes.push(`বাড়তি ৳${excess} গ্রাহকের ওয়ালেটে যোগ করা হয়েছে।`);
-      if (paid > payment.amount && !payment.userId) notes.push(`⚠️ গেস্ট বাড়তি ৳${paid - payment.amount} পাঠিয়েছেন — ম্যানুয়ালি সমাধান করুন।`);
 
       const autoApprove = inStock && !underpaid;
       const order = await tx.order.create({
@@ -397,22 +396,7 @@ async function settleEpsPayment(paymentId: string, result: EpsVerifyResult): Pro
       await claimTransactionId(tx, { trxId: ledgerTrxId, method: "EPS", orderId: order.id });
       await tx.epsPayment.update({ where: { id: paymentId }, data: { orderId: order.id } });
 
-      if (excess > 0 && payment.userId) {
-        await tx.user.update({ where: { id: payment.userId }, data: { walletBalance: { increment: excess } } });
-        await tx.walletTransaction.create({
-          data: {
-            userId: payment.userId,
-            type: "REFUND",
-            method: "EPS",
-            amount: excess,
-            status: "APPROVED",
-            reviewedAt: new Date(),
-            note: `অর্ডার ${formatOrderNumber(order.orderSerial)}: EPS এ ৳${paid} পরিশোধ, মূল্য ৳${payment.amount} — বাড়তি ৳${excess} ওয়ালেটে।`,
-          },
-        });
-      }
-
-      if (!autoApprove || paid !== payment.amount) {
+      if (!autoApprove) {
         await notifyAdmins(tx, {
           type: "ORDER_PAYMENT_MISMATCH",
           message: `💳 EPS অর্ডার ${formatOrderNumber(order.orderSerial)}: ${notes.slice(1).join(" ")}`,
