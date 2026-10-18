@@ -283,6 +283,11 @@ async function settleEpsPayment(paymentId: string, result: EpsVerifyResult): Pro
       const via = result.financialEntity ? ` (${result.financialEntity})` : "";
       const epsRef = epsTransactionId ? ` · EPS TrxID ${epsTransactionId}` : "";
 
+      // EPS's paid amount includes its own charge, which the customer pays on
+      // top. Only what we asked for is credited; a short payment credits what
+      // actually arrived.
+      const credit = Math.min(paid, payment.amount);
+
       if (payment.purpose === "DEPOSIT") {
         if (!payment.userId) throw new Error("EPS deposit without a user");
         const walletTx = await tx.walletTransaction.create({
@@ -290,23 +295,25 @@ async function settleEpsPayment(paymentId: string, result: EpsVerifyResult): Pro
             userId: payment.userId,
             type: "DEPOSIT",
             method: "EPS",
-            amount: paid,
+            amount: credit,
             transactionId: ledgerTrxId,
             status: "APPROVED",
             reviewedAt: new Date(),
             note:
-              paid !== payment.amount
-                ? `EPS অটো পেমেন্ট${via}: অনুরোধ ৳${payment.amount}, প্রকৃত পরিশোধ ৳${paid} যোগ করা হয়েছে।${epsRef}`
-                : `EPS অটো পেমেন্ট${via}${epsRef}`,
+              paid > payment.amount
+                ? `EPS অটো পেমেন্ট${via}: চার্জসহ ৳${paid} পরিশোধ, ওয়ালেটে ৳${credit} যোগ হয়েছে।${epsRef}`
+                : paid < payment.amount
+                  ? `EPS অটো পেমেন্ট${via}: অনুরোধ ৳${payment.amount}, প্রকৃত পরিশোধ ৳${paid} যোগ করা হয়েছে।${epsRef}`
+                  : `EPS অটো পেমেন্ট${via}${epsRef}`,
           },
         });
         await claimTransactionId(tx, { trxId: ledgerTrxId, method: "EPS", walletTransactionId: walletTx.id });
-        await tx.user.update({ where: { id: payment.userId }, data: { walletBalance: { increment: paid } } });
+        await tx.user.update({ where: { id: payment.userId }, data: { walletBalance: { increment: credit } } });
         await tx.epsPayment.update({ where: { id: paymentId }, data: { walletTransactionId: walletTx.id } });
 
         const email = payment.user?.email;
         afterCommit = async () => {
-          await sendWalletTopupEmail(email, { amount: paid }).catch(() => undefined);
+          await sendWalletTopupEmail(email, { amount: credit }).catch(() => undefined);
         };
         return;
       }
@@ -327,20 +334,20 @@ async function settleEpsPayment(paymentId: string, result: EpsVerifyResult): Pro
               userId: payment.userId,
               type: "REFUND",
               method: "EPS",
-              amount: paid,
+              amount: credit,
               transactionId: ledgerTrxId,
               status: "APPROVED",
               reviewedAt: new Date(),
-              note: `EPS পেমেন্ট${via}: প্যাকেজটি আর নেই, তাই ৳${paid} ওয়ালেটে যোগ করা হয়েছে।${epsRef}`,
+              note: `EPS পেমেন্ট${via}: প্যাকেজটি আর নেই, তাই ৳${credit} ওয়ালেটে যোগ করা হয়েছে।${epsRef}`,
             },
           });
           await claimTransactionId(tx, { trxId: ledgerTrxId, method: "EPS", walletTransactionId: walletTx.id });
-          await tx.user.update({ where: { id: payment.userId }, data: { walletBalance: { increment: paid } } });
+          await tx.user.update({ where: { id: payment.userId }, data: { walletBalance: { increment: credit } } });
           await tx.epsPayment.update({ where: { id: paymentId }, data: { walletTransactionId: walletTx.id } });
           await createNotification(tx, {
             userId: payment.userId,
             type: "ORDER_NOTE",
-            message: `আপনার পেমেন্ট ৳${paid} সফল হয়েছে, কিন্তু প্যাকেজটি আর পাওয়া যাচ্ছে না — টাকা আপনার ওয়ালেটে যোগ করা হয়েছে।`,
+            message: `আপনার পেমেন্ট ৳${credit} সফল হয়েছে, কিন্তু প্যাকেজটি আর পাওয়া যাচ্ছে না — টাকা আপনার ওয়ালেটে যোগ করা হয়েছে।`,
             link: "/dashboard",
           });
         } else {
