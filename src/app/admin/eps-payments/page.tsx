@@ -23,6 +23,10 @@ export default async function AdminEpsPaymentsPage({
   const { status: rawStatus, q } = await searchParams;
   const status: StatusFilter = STATUSES.includes(rawStatus as StatusFilter) ? (rawStatus as StatusFilter) : "ALL";
   const query = (q ?? "").trim().slice(0, 100);
+  // orderSerial is a 32-bit INT: a phone number or MTID is all digits too, and
+  // passing it through would make Prisma reject the whole query.
+  const serialDigits = query.replace(/^#/, "");
+  const orderSerial = /^\d{1,10}$/.test(serialDigits) && Number(serialDigits) <= 2_147_483_647 ? Number(serialDigits) : null;
 
   const where: Prisma.EpsPaymentWhereInput = {
     ...(status !== "ALL" ? { status } : {}),
@@ -35,7 +39,7 @@ export default async function AdminEpsPaymentsPage({
             { playerId: { contains: query } },
             { guestPhone: { contains: query } },
             { user: { email: { contains: query } } },
-            ...(Number.isInteger(Number(query.replace("#", ""))) ? [{ order: { orderSerial: Number(query.replace("#", "")) } }] : []),
+            ...(orderSerial !== null ? [{ order: { orderSerial } }] : []),
           ],
         }
       : {}),

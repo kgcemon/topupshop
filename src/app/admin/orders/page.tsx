@@ -35,7 +35,9 @@ export default async function AdminOrdersPage({
   const currentPage = Math.max(1, Number(page) || 1);
 
   const numericQuery = query.replace(/^#/, "");
-  const isNumeric = /^\d+$/.test(numericQuery);
+  // orderSerial is a 32-bit INT; a longer digit string (phone, trx id) would
+  // make Prisma reject the whole query.
+  const isNumeric = /^\d{1,10}$/.test(numericQuery) && Number(numericQuery) <= 2_147_483_647;
 
   const searchWhere: Prisma.OrderWhereInput = query
     ? {
