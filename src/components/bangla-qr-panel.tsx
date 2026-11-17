@@ -77,8 +77,8 @@ export function BanglaQrPanel({
           <ol className="space-y-2">
             <Step n={1}>উপরের বাটনে চাপ দিয়ে QR কোডটি ফোনে ডাউনলোড করুন।</Step>
             <Step n={2}>
-              <span className="font-semibold">বিকাশ অ্যাপ</span> খুলুন, তারপর <span className="font-semibold">&quot;QR স্ক্যান&quot;</span>{" "}
-              অপশনে যান।
+              <span className="font-semibold">bKash অ্যাপ</span> খুলুন, তারপর <span className="font-semibold">&quot;পেমেন্ট&quot;</span>{" "}
+              অপশনে চাপুন।
             </Step>
             <Step n={3}>
               স্ক্যানারের উপরে <span className="font-semibold">গ্যালারি / ছবি</span> আইকনে চাপ দিয়ে ডাউনলোড করা QR ছবিটি
