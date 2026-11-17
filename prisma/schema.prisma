@@ -205,6 +205,7 @@ enum PaymentMethod {
   NAGAD
   ROCKET
   EPS // automatic bKash/Nagad/Rocket/card payment through the EPS gateway (see src/lib/eps-*.ts)
+  BANGLA_QR // bKash -> Bangla QR merchant payment, confirmed by the bank's (e.g. BANK.ASIA) SMS (see src/lib/bangla-qr.ts)
 }
 
 enum OrderStatus {
@@ -232,6 +233,7 @@ model Order {
   amount           Int // in BDT
   paymentMethod    PaymentMethod
   transactionId    String?       @unique // manual gateway trx id, when not paid by wallet
+  payerNumber      String? // BANGLA_QR only: the bKash number the customer says they paid from
   status           OrderStatus   @default(PENDING)
   adminNote        String?       @db.Text
   reviewedById     String?
@@ -506,6 +508,7 @@ model WalletTransaction {
   method        PaymentMethod           @default(WALLET)
   amount        Int // in BDT, always positive; sign implied by type
   transactionId String?                 @unique // bKash/Nagad/Rocket trx id submitted by user
+  payerNumber   String? // BANGLA_QR only: the bKash number the customer says they paid from
   status        WalletTransactionStatus @default(PENDING)
   note          String?                 @db.Text
   reviewedById  String?
@@ -746,6 +749,15 @@ model SiteSetting {
   // never affected. 0 disables the guard.
   bkashMinAmount   Int     @default(0)
   bkashMinWarning  String? @db.Text
+  // What happens below bkashMinAmount when the customer picks bKash:
+  //   "OFF"       - nothing, bKash number shows as usual
+  //   "WARNING"   - bkashMinWarning replaces the number
+  //   "BANGLA_QR" - the Bangla QR panel replaces the number; the customer pays
+  //                 the QR from the bKash app and submits their bKash number,
+  //                 which is auto-matched against the bank's SMS
+  bkashMinMode     String  @default("WARNING")
+  banglaQrImage    String? // uploaded QR image shown/downloadable in BANGLA_QR mode
+  banglaQrVideoUrl String? // optional YouTube tutorial for paying by QR
   bkashIcon        String?
   nagadIcon        String?
   rocketIcon       String?

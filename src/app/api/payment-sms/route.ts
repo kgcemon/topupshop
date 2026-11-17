@@ -16,6 +16,7 @@ const METHOD_LABELS: Record<PaymentMethod, string> = {
   NAGAD: "Nagad",
   ROCKET: "Rocket",
   EPS: "EPS",
+  BANGLA_QR: "Bangla QR",
 };
 
 // Which SiteSetting column holds the running-balance checkpoint for each method.
@@ -108,14 +109,16 @@ export async function POST(request: Request) {
   // it. A mismatch usually means a forged/edited SMS (or a missed SMS broke
   // the chain) — either way the row is still stored for admin visibility but
   // starts inactive so it can't be auto-matched to an order/deposit.
-  const method = allowedSender.method as "BKASH" | "NAGAD" | "ROCKET";
-  const checkpointField = CHECKPOINT_FIELD[method];
-  const checkpoint = siteSetting[checkpointField];
+  // Bangla QR (bank) SMS carry no running balance, so they have no chain.
+  const method = allowedSender.method;
+  const checkpointField =
+    method === "BKASH" || method === "NAGAD" || method === "ROCKET" ? CHECKPOINT_FIELD[method] : null;
+  const checkpoint = checkpointField ? siteSetting[checkpointField] : null;
   let isActive = true;
   let checkpointUpdate: { [key: string]: number } | null = null;
   let mismatch: { expected: number; reported: number } | null = null;
 
-  if (siteSetting.paymentSmsBalanceVerifyEnabled && parsed.balance !== undefined) {
+  if (checkpointField && siteSetting.paymentSmsBalanceVerifyEnabled && parsed.balance !== undefined) {
     const reportedBalance = round2(Number(parsed.balance));
     const amount = round2(Number(parsed.amount));
 

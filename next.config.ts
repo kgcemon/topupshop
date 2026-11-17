@@ -18,6 +18,8 @@ const securityHeaders = [
       "img-src 'self' data: blob: https://lh3.googleusercontent.com",
       "font-src 'self' data:",
       "connect-src 'self' https://cloudflareinsights.com",
+      // Bangla QR payment tutorial video (privacy-enhanced YouTube embed).
+      "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com",
       "object-src 'none'",
       "base-uri 'self'",
       // Google sign-in is a form POST that 302s to accounts.google.com, and

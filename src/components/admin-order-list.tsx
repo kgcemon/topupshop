@@ -217,9 +217,11 @@ function OrderCard({
             </div>
 
             <div className="mt-1.5">
-              <p className="text-[10px] font-bold tracking-wide text-gray-400 uppercase">Trx ID</p>
+              <p className="text-[10px] font-bold tracking-wide text-gray-400 uppercase">
+                {order.paymentMethod === "BANGLA_QR" ? "Bangla QR · bKash নাম্বার" : "Trx ID"}
+              </p>
               <p className="truncate font-mono text-sm font-bold text-gray-900">
-                {order.transactionId || "—"}
+                {order.paymentMethod === "BANGLA_QR" ? order.payerNumber || "—" : order.transactionId || "—"}
               </p>
             </div>
 
@@ -318,6 +320,12 @@ function OrderCard({
                 <span>
                   পেমেন্ট: <span className="font-semibold">{order.paymentMethod}</span>
                 </span>
+                {order.payerNumber && (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-0.5">
+                    <span className="font-mono">bKash: {order.payerNumber}</span>
+                    <CopyButton value={order.payerNumber} label="" />
+                  </span>
+                )}
                 {order.transactionId && (
                   <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5">
                     <span className="font-mono">TrxID: {order.transactionId}</span>

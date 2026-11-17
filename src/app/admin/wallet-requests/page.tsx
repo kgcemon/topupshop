@@ -9,6 +9,7 @@ const METHOD_COLORS: Record<string, string> = {
   BKASH: "#E2136E",
   NAGAD: "#F42534",
   ROCKET: "#8C3494",
+  BANGLA_QR: "#0B7A3E",
 };
 
 export default async function AdminWalletRequestsPage({
@@ -23,7 +24,7 @@ export default async function AdminWalletRequestsPage({
     prisma.walletTransaction.findMany({
       where: {
         type: "DEPOSIT",
-        ...(query ? { transactionId: { contains: query } } : {}),
+        ...(query ? { OR: [{ transactionId: { contains: query } }, { payerNumber: { contains: query } }] } : {}),
       },
       orderBy: { createdAt: "desc" },
       take: 100,
@@ -54,7 +55,7 @@ export default async function AdminWalletRequestsPage({
         )}
         {transactions.map((tx) => {
           const icon =
-            tx.method === "BKASH"
+            tx.method === "BKASH" || tx.method === "BANGLA_QR"
               ? settings.bkashIcon
               : tx.method === "NAGAD"
                 ? settings.nagadIcon
@@ -79,7 +80,7 @@ export default async function AdminWalletRequestsPage({
                   {tx.user.name} ({tx.user.email})
                 </p>
                 <p className="text-xs text-gray-500">
-                  {tx.method} · Trx: {tx.transactionId} ·{" "}
+                  {tx.method} · {tx.payerNumber ? `bKash: ${tx.payerNumber} · ` : ""}Trx: {tx.transactionId ?? "—"} ·{" "}
                   {formatDhakaDateTime(tx.createdAt)}
                 </p>
               </div>

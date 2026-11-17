@@ -1,4 +1,5 @@
 import type { PaymentMethod } from "@/generated/prisma/enums";
+import { parseBanglaQrSms } from "@/lib/bangla-qr";
 
 export type ParsedPaymentSms = {
   amount: string;
@@ -49,6 +50,10 @@ export function parsePaymentSms(method: PaymentMethod, sms: string): ParsedPayme
     if (m) return { amount: stripCommas(m[1]), paymentNumber: m[2], trxId: m[3], balance: stripCommas(m[4]) };
 
     return null;
+  }
+
+  if (method === "BANGLA_QR") {
+    return parseBanglaQrSms(sms);
   }
 
   if (method === "ROCKET") {

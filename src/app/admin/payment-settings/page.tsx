@@ -49,6 +49,9 @@ export default async function AdminPaymentSettingsPage() {
             rocketNumber: settings.rocketNumber,
             bkashMinAmount: settings.bkashMinAmount,
             bkashMinWarning: settings.bkashMinWarning,
+            bkashMinMode: settings.bkashMinMode,
+            banglaQrImage: settings.banglaQrImage,
+            banglaQrVideoUrl: settings.banglaQrVideoUrl,
           }}
         />
       </div>

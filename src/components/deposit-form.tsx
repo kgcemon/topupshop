@@ -8,6 +8,7 @@ import { PaymentNumberCard } from "@/components/payment-number-card";
 import { startEpsDepositAction, type EpsStartState } from "@/lib/actions/eps-actions";
 import { AutoPayIcon, AutoPayNotice, EpsRedirectOverlay } from "@/components/auto-pay";
 import { PayOption } from "@/components/pay-option";
+import { BanglaQrPanel } from "@/components/bangla-qr-panel";
 
 const initialState: ActionState = {};
 const initialEpsState: EpsStartState = {};
@@ -56,6 +57,9 @@ export function DepositForm({
   icons,
   bkashMinAmount,
   bkashMinWarning,
+  bkashMinMode,
+  banglaQrImage,
+  banglaQrVideoUrl,
   manualEnabled,
   manualTitle,
   eps,
@@ -64,6 +68,9 @@ export function DepositForm({
   icons: { bkashIcon: string | null; nagadIcon: string | null; rocketIcon: string | null };
   bkashMinAmount: number;
   bkashMinWarning: string | null;
+  bkashMinMode: string;
+  banglaQrImage: string | null;
+  banglaQrVideoUrl: string | null;
   manualEnabled: boolean;
   manualTitle: string;
   eps: { enabled: boolean; title: string; subtitle: string | null; icon: string | null };
@@ -106,11 +113,15 @@ export function DepositForm({
 
   // Same guard as the order form, judged on the amount being typed.
   const typedAmount = Number(amount);
-  const bkashBelowMin =
+  const belowMin =
     bkashMinAmount > 0 &&
     Number.isFinite(typedAmount) &&
     typedAmount > 0 &&
     typedAmount < bkashMinAmount;
+  // Only warning mode withholds bKash (and moves it last); Bangla QR mode
+  // swaps the number for the QR panel instead.
+  const bkashBelowMin = belowMin && bkashMinMode === "WARNING";
+  const bkashUseQr = manualMethod === "BKASH" && belowMin && bkashMinMode === "BANGLA_QR" && !!banglaQrImage;
   const methods = bkashBelowMin ? METHODS_BELOW_MIN : METHODS;
 
   // Whenever the ordering flips, pick whatever now sits first.
@@ -156,7 +167,9 @@ export function DepositForm({
           </svg>
         </span>
         <p className="text-sm font-semibold text-green-700">
-          রিকোয়েস্টটি সাবমিট হয়েছে। অ্যাডমিন যাচাই করে ওয়ালেটে টাকা যোগ করবেন।
+          {bkashUseQr
+            ? "রিকোয়েস্টটি সাবমিট হয়েছে। ব্যাংকের SMS এর সাথে আপনার নাম্বার ও টাকা মিলে গেলে টাকা নিজে থেকেই ওয়ালেটে যোগ হয়ে যাবে।"
+            : "রিকোয়েস্টটি সাবমিট হয়েছে। অ্যাডমিন যাচাই করে ওয়ালেটে টাকা যোগ করবেন।"}
         </p>
       </div>
     );
@@ -373,8 +386,17 @@ export function DepositForm({
         </form>
       ) : (
       <form action={formAction} className="space-y-4">
-      <input type="hidden" name="method" value={manualMethod} />
+      <input type="hidden" name="method" value={bkashUseQr ? "BANGLA_QR" : manualMethod} />
       <input type="hidden" name="amount" value={amount} />
+      {bkashUseQr && banglaQrImage ? (
+        <BanglaQrPanel
+          amount={typedAmount}
+          qrImage={banglaQrImage}
+          videoUrl={banglaQrVideoUrl}
+          error={state.fieldErrors?.payerNumber}
+        />
+      ) : (
+      <>
       <div>
         <PaymentNumberCard
           method={manualMethod}
@@ -408,6 +430,8 @@ export function DepositForm({
           <p className="mt-1 text-sm text-red-600">{state.fieldErrors.transactionId}</p>
         )}
       </div>
+      </>
+      )}
 
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
 
@@ -421,6 +445,8 @@ export function DepositForm({
             <Spinner />
             সাবমিট হচ্ছে...
           </>
+        ) : bkashUseQr ? (
+          "পেমেন্ট করেছি — সাবমিট করুন"
         ) : (
           "Submit Deposit Request"
         )}

@@ -12,6 +12,7 @@ const METHOD_COLORS: Record<string, string> = {
   NAGAD: "#F42534",
   ROCKET: "#8C3494",
   EPS: "#059669",
+  BANGLA_QR: "#0B7A3E",
 };
 
 export default async function DepositPage() {
@@ -46,6 +47,9 @@ export default async function DepositPage() {
             }}
             bkashMinAmount={settings.bkashMinAmount}
             bkashMinWarning={settings.bkashMinWarning}
+            bkashMinMode={settings.bkashMinMode}
+            banglaQrImage={settings.banglaQrImage}
+            banglaQrVideoUrl={settings.banglaQrVideoUrl}
             manualEnabled={paymentMethods.manual.enabled}
             manualTitle={paymentMethods.manual.title}
             eps={paymentMethods.eps}
@@ -69,7 +73,7 @@ export default async function DepositPage() {
           <div className="space-y-3">
             {transactions.map((tx) => {
               const icon =
-                tx.method === "BKASH"
+                tx.method === "BKASH" || tx.method === "BANGLA_QR"
                   ? settings.bkashIcon
                   : tx.method === "NAGAD"
                     ? settings.nagadIcon

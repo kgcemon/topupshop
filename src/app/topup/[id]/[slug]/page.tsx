@@ -196,6 +196,9 @@ export default async function TopupProductPage({
         }}
         bkashMinAmount={settings.bkashMinAmount}
         bkashMinWarning={settings.bkashMinWarning}
+        bkashMinMode={settings.bkashMinMode}
+        banglaQrImage={settings.banglaQrImage}
+        banglaQrVideoUrl={settings.banglaQrVideoUrl}
       />
 
       {rules.length > 0 && (

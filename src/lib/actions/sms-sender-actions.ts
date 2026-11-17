@@ -13,7 +13,7 @@ async function requireAdmin() {
   return session;
 }
 
-const SMS_SENDER_METHODS = ["BKASH", "NAGAD", "ROCKET"] as const;
+const SMS_SENDER_METHODS = ["BKASH", "NAGAD", "ROCKET", "BANGLA_QR"] as const;
 
 function parseSmsSenderForm(formData: FormData) {
   const name = String(formData.get("name") || "").trim();

@@ -52,7 +52,7 @@ export const orderSchema = z.object({
   rechargeOptionId: z.coerce.number().int().positive(),
   playerId: z.string().trim().min(3, "প্লেয়ার আইডি দিন").max(30),
   playerName: z.string().trim().max(60).optional().or(z.literal("")),
-  paymentMethod: z.enum(["WALLET", "BKASH", "NAGAD", "ROCKET", "EPS"]),
+  paymentMethod: z.enum(["WALLET", "BKASH", "NAGAD", "ROCKET", "EPS", "BANGLA_QR"]),
   transactionId: z
     .string()
     .trim()
@@ -190,9 +190,17 @@ export const paymentSettingsSchema = z
       .max(300, "ওয়ার্নিং সর্বোচ্চ ৩০০ ক্যারেক্টার হতে পারবে")
       .optional()
       .or(z.literal("")),
+    bkashMinMode: z.enum(["OFF", "WARNING", "BANGLA_QR"]).catch("WARNING"),
+    banglaQrVideoUrl: z
+      .string()
+      .trim()
+      .max(300)
+      .refine((v) => v === "" || /^https:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//i.test(v), "সঠিক YouTube লিংক দিন")
+      .optional()
+      .or(z.literal("")),
   })
-  // An amount with no message would just blank out the bKash number.
-  .refine((data) => data.bkashMinAmount === 0 || !!data.bkashMinWarning, {
+  // Warning mode with no message would just blank out the bKash number.
+  .refine((data) => data.bkashMinAmount === 0 || data.bkashMinMode !== "WARNING" || !!data.bkashMinWarning, {
     message: "সর্বনিম্ন অ্যামাউন্ট দিলে ওয়ার্নিং মেসেজও লিখতে হবে",
     path: ["bkashMinWarning"],
   });

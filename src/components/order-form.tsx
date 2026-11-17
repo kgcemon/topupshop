@@ -12,6 +12,7 @@ import { WhatsappLink, WhatsAppIcon } from "@/components/whatsapp-link";
 import { PlayerNameCheck } from "@/components/player-name-check";
 import { AutoPayIcon, AutoPayNotice, EpsRedirectOverlay } from "@/components/auto-pay";
 import { PayOption } from "@/components/pay-option";
+import { BanglaQrPanel } from "@/components/bangla-qr-panel";
 import type { PaymentMethodConfig } from "@/lib/payment-methods";
 
 type RechargeOption = { id: number; label: string; price: number; stock: number | null };
@@ -45,6 +46,9 @@ export function OrderForm({
   paymentIcons,
   bkashMinAmount,
   bkashMinWarning,
+  bkashMinMode,
+  banglaQrImage,
+  banglaQrVideoUrl,
   stockOut,
   allowGuestOrders,
   depositEnabled,
@@ -61,6 +65,9 @@ export function OrderForm({
   paymentIcons: PaymentIcons;
   bkashMinAmount: number;
   bkashMinWarning: string | null;
+  bkashMinMode: string;
+  banglaQrImage: string | null;
+  banglaQrVideoUrl: string | null;
   stockOut: boolean;
   allowGuestOrders: boolean;
   depositEnabled: boolean;
@@ -113,7 +120,12 @@ export function OrderForm({
           : null;
 
   // No package picked = no amount to judge yet, so nothing is withheld.
-  const bkashBelowMin = bkashMinAmount > 0 && price > 0 && price < bkashMinAmount;
+  const belowMin = bkashMinAmount > 0 && price > 0 && price < bkashMinAmount;
+  // Warning mode withholds the bKash number; Bangla QR mode swaps it for the
+  // QR panel (bKash stays fully usable, so it keeps its place); OFF does nothing.
+  const bkashBelowMin = belowMin && bkashMinMode === "WARNING";
+  const bkashUseQr = method === "BKASH" && belowMin && bkashMinMode === "BANGLA_QR" && !!banglaQrImage;
+  const submitMethod = bkashUseQr ? "BANGLA_QR" : method;
   const manualMethods = bkashBelowMin ? MANUAL_METHODS_BELOW_MIN : MANUAL_METHODS;
 
   // Whenever the ordering flips, pick whatever now sits first — a wallet
@@ -156,7 +168,11 @@ export function OrderForm({
             <p className="text-xs text-gray-500">
               {o.paymentMethod === "WALLET"
                 ? "আপনার ওয়ালেট থেকে টাকা কেটে নেওয়া হয়েছে। আমাদের টিম শীঘ্রই প্রসেস করবে।"
-                : "আপনার পেমেন্ট রিভিউ করে অ্যাডমিন কর্তৃক অ্যাপ্রুভ করা হবে।"}
+                : o.paymentMethod === "BANGLA_QR" && o.status !== "PENDING"
+                  ? "আপনার Bangla QR পেমেন্ট মিলে গেছে, অর্ডারটি অটো অনুমোদন হয়েছে।"
+                  : o.paymentMethod === "BANGLA_QR"
+                    ? "আপনার পেমেন্ট যাচাই হচ্ছে — ব্যাংকের SMS আসলেই অর্ডারটি নিজে থেকে অনুমোদন হয়ে যাবে।"
+                    : "আপনার পেমেন্ট রিভিউ করে অ্যাডমিন কর্তৃক অ্যাপ্রুভ করা হবে।"}
             </p>
           </div>
         </div>
@@ -171,7 +187,8 @@ export function OrderForm({
           <DetailRow label="প্লেয়ার আইডি" value={o.playerId} />
           {o.playerName && <DetailRow label="প্লেয়ার নাম" value={o.playerName} />}
           <DetailRow label="পরিমাণ" value={`${formatTaka(o.amount)} টাকা`} />
-          <DetailRow label="পেমেন্ট মেথড" value={o.paymentMethod} />
+          <DetailRow label="পেমেন্ট মেথড" value={o.paymentMethod === "BANGLA_QR" ? "bKash (Bangla QR)" : o.paymentMethod} />
+          {o.payerNumber && <DetailRow label="বিকাশ নাম্বার" value={o.payerNumber} mono />}
           {o.transactionId && <DetailRow label="ট্রানজেকশন আইডি" value={o.transactionId} mono />}
           <DetailRow
             label="সময়"
@@ -213,7 +230,7 @@ export function OrderForm({
     <form action={formAction}>
       <input type="hidden" name="productId" value={productId} />
       <input type="hidden" name="rechargeOptionId" value={selectedOptionId} />
-      <input type="hidden" name="paymentMethod" value={method} />
+      <input type="hidden" name="paymentMethod" value={submitMethod} />
 
       <div className="gap-2 md:flex">
         <div className="mt-2 w-full md:w-2/3">
@@ -448,6 +465,15 @@ export function OrderForm({
                     );
                   })}
                 </div>
+                {bkashUseQr && banglaQrImage ? (
+                  <BanglaQrPanel
+                    amount={price}
+                    qrImage={banglaQrImage}
+                    videoUrl={banglaQrVideoUrl}
+                    error={state.fieldErrors?.payerNumber}
+                  />
+                ) : (
+                <>
                 {receivingNumber && (
                   <div>
                     <PaymentNumberCard
@@ -474,6 +500,8 @@ export function OrderForm({
                 />
                 {state.fieldErrors?.transactionId && (
                   <p className="text-sm text-red-600">{state.fieldErrors.transactionId}</p>
+                )}
+                </>
                 )}
               </div>
             )}
@@ -520,6 +548,8 @@ export function OrderForm({
                     ? price > 0
                       ? `৳${formatTaka(price)} Pay Now`
                       : "Pay Now"
+                    : bkashUseQr
+                      ? "পেমেন্ট করেছি — সাবমিট করুন"
                     : isLoggedIn
                       ? "অর্ডার করুন"
                       : "গেস্ট হিসেবে অর্ডার করুন"}

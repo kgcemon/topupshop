@@ -13,6 +13,7 @@ const METHOD_LABELS: Record<string, string> = {
   BKASH: "bKash",
   NAGAD: "Nagad",
   ROCKET: "Rocket",
+  BANGLA_QR: "BANK.ASIA (Bangla QR)",
 };
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -132,7 +133,7 @@ export default async function AdminSmsSettingsPage() {
             <input
               name="name"
               required
-              placeholder="e.g. bKash"
+              placeholder="e.g. bKash / BANK.ASIA"
               className="w-40 rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
@@ -142,6 +143,7 @@ export default async function AdminSmsSettingsPage() {
               <option value="BKASH">bKash</option>
               <option value="NAGAD">Nagad</option>
               <option value="ROCKET">Rocket</option>
+              <option value="BANGLA_QR">BANK.ASIA (Bangla QR)</option>
             </select>
           </div>
           <button className="rounded-md bg-primary-500 px-4 py-2 text-sm font-bold text-white hover:bg-primary-600">
@@ -212,6 +214,7 @@ export default async function AdminSmsSettingsPage() {
                     <option value="BKASH">bKash</option>
                     <option value="NAGAD">Nagad</option>
                     <option value="ROCKET">Rocket</option>
+              <option value="BANGLA_QR">BANK.ASIA (Bangla QR)</option>
                   </select>
                 </div>
                 <button className="rounded-md bg-primary-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-primary-600">

@@ -44,6 +44,7 @@ export default async function AdminOrdersPage({
         OR: [
           ...(isNumeric ? [{ orderSerial: Number(numericQuery) }] : []),
           { transactionId: { contains: query } },
+          { payerNumber: { contains: query } },
         ],
       }
     : {};

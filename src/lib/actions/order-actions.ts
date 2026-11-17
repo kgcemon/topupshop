@@ -21,6 +21,7 @@ import { getPaymentMethodConfig } from "@/lib/payment-methods";
 import { getSiteSettings } from "@/lib/data";
 import { startEpsPayment, EpsStartError } from "@/lib/eps-payments";
 import { resolveOrderCost } from "@/lib/profit";
+import { findBanglaQrSmsForPayer, isBanglaQrActive, normalizeBdMobile } from "@/lib/bangla-qr";
 
 export type OrderActionState = ActionState & {
   // Set for an EPS checkout: the browser goes here to pay; the order itself is
@@ -35,6 +36,7 @@ export type OrderActionState = ActionState & {
     amount: number;
     paymentMethod: string;
     transactionId: string | null;
+    payerNumber?: string | null;
     status: string;
     createdAt: string;
   };
@@ -183,6 +185,21 @@ export async function placeOrderAction(
       if (error instanceof EpsStartError) return { error: error.message };
       throw error;
     }
+  }
+
+  if (paymentMethod === "BANGLA_QR") {
+    return placeBanglaQrOrder({
+      formData,
+      option,
+      userId,
+      ip,
+      guestName,
+      guestPhone,
+      productId,
+      rechargeOptionId,
+      playerId,
+      playerName: playerName || null,
+    });
   }
 
   if (paymentMethod !== "WALLET" && !transactionId) {
@@ -456,3 +473,122 @@ export async function placeOrderAction(
 }
 
 class OrderError extends Error {}
+
+type OptionWithProduct = NonNullable<
+  Awaited<ReturnType<typeof prisma.rechargeOption.findFirst<{ include: { product: true } }>>>
+>;
+
+// bKash below the admin's minimum, paid through the Bangla QR. The customer
+// gives the bKash number they paid from instead of a trx id; the order is
+// created PENDING and approved only when the bank's SMS fits it exactly
+// (amount, masked number, within the time window) — now, if the SMS already
+// arrived, or later from /api/payment-sms (see payment-sms-settle.ts).
+async function placeBanglaQrOrder(input: {
+  formData: FormData;
+  option: OptionWithProduct;
+  userId: string | null;
+  ip: string;
+  guestName: string | null;
+  guestPhone: string | null;
+  productId: number;
+  rechargeOptionId: number;
+  playerId: string;
+  playerName: string | null;
+}): Promise<OrderActionState> {
+  const { option, userId } = input;
+  const settings = await getSiteSettings();
+  if (!isBanglaQrActive(settings) || option.price >= settings.bkashMinAmount) {
+    return { error: "এই অ্যামাউন্টে Bangla QR পেমেন্ট চালু নেই। অন্য একটি মেথড বেছে নিন।" };
+  }
+
+  const payerNumber = normalizeBdMobile(String(input.formData.get("payerNumber") || ""));
+  if (!payerNumber) {
+    return { fieldErrors: { payerNumber: "যে বিকাশ নাম্বার থেকে টাকা পাঠিয়েছেন সেটি সঠিকভাবে লিখুন (01XXXXXXXXX)" } };
+  }
+
+  if (!checkRateLimit(`bangla-qr:${userId ?? input.ip}`, 6, 10 * 60 * 1000)) {
+    return { error: "অল্প সময়ে অনেকবার চেষ্টা করা হয়েছে। কয়েক মিনিট পর আবার চেষ্টা করুন।" };
+  }
+
+  let createdOrder;
+  try {
+    createdOrder = await prisma.$transaction(async (tx) => {
+      const stockReserved = await tx.rechargeOption.updateMany({
+        where: { id: input.rechargeOptionId, OR: [{ stock: null }, { stock: { gt: 0 } }] },
+        data: { stock: { decrement: 1 } },
+      });
+      if (stockReserved.count === 0) {
+        throw new OrderError("এই রিচার্জ অপশনটি বর্তমানে Stock Out।");
+      }
+
+      const order = await tx.order.create({
+        data: {
+          orderNumber: generateOrderNumber(),
+          userId,
+          guestName: input.guestName,
+          guestPhone: input.guestPhone,
+          productId: input.productId,
+          rechargeOptionId: input.rechargeOptionId,
+          playerId: input.playerId,
+          playerName: input.playerName,
+          amount: option.price,
+          costAmount: await resolveOrderCost(tx, option),
+          paymentMethod: "BANGLA_QR",
+          payerNumber,
+          status: "PENDING",
+        },
+      });
+
+      const { sms } = await findBanglaQrSmsForPayer(tx, {
+        payerNumber,
+        amount: option.price,
+        at: order.createdAt,
+      });
+      if (!sms || !(await claimPaymentSmsById(tx, sms.id))) return order;
+
+      // The SMS's own id stands in for a trx id, and is burned site-wide
+      // like any other — a second claim of the same SMS fails with P2002.
+      await claimTransactionId(tx, { trxId: sms.trxId, method: "BANGLA_QR", orderId: order.id });
+      await tx.paymentSms.update({ where: { id: sms.id }, data: { usedForOrderId: order.id } });
+      return tx.order.update({
+        where: { id: order.id },
+        data: { status: "APPROVED", reviewedAt: new Date(), transactionId: sms.trxId },
+      });
+    });
+  } catch (error) {
+    if (error instanceof OrderError) return { error: error.message };
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return { error: "এই পেমেন্টটি ইতিমধ্যে অন্য একটি অর্ডারে ব্যবহার হয়েছে। সাপোর্টে যোগাযোগ করুন।" };
+    }
+    throw error;
+  }
+
+  let finalStatus: string = createdOrder.status;
+  if (createdOrder.status === "APPROVED") {
+    const result = await processOrderFulfillment(createdOrder.id, option.deliveryMethod, {
+      orderSerial: createdOrder.orderSerial,
+    });
+    if (result.status === "fulfilled" || result.status === "already-fulfilled") {
+      finalStatus = "RUNNING";
+    }
+  }
+
+  revalidatePath("/dashboard/orders");
+  revalidatePath("/admin/orders");
+  return {
+    success: true,
+    order: {
+      orderSerial: createdOrder.orderSerial,
+      productName: option.product.name,
+      optionLabel: option.label,
+      playerId: createdOrder.playerId,
+      playerName: createdOrder.playerName,
+      amount: createdOrder.amount,
+      paymentMethod: createdOrder.paymentMethod,
+      transactionId: createdOrder.transactionId,
+      payerNumber,
+      status: finalStatus,
+      createdAt: createdOrder.createdAt.toISOString(),
+    },
+  };
+}

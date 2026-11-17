@@ -11,6 +11,7 @@ const METHOD_LABELS: Record<string, string> = {
   BKASH: "bKash",
   NAGAD: "Nagad",
   ROCKET: "Rocket",
+  BANGLA_QR: "Bangla QR",
 };
 
 const STATUS_FILTERS = ["ALL", "UNUSED", "USED"] as const;

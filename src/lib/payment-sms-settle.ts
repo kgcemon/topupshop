@@ -4,7 +4,10 @@ import { createNotification, notifyAdmins } from "@/lib/notifications";
 import { processOrderFulfillment } from "@/lib/order-fulfillment";
 import { sendWalletTopupEmail } from "@/lib/mailer";
 import { formatOrderNumber } from "@/lib/utils";
+import { claimTransactionId } from "@/lib/transaction-id";
+import { BANGLA_QR_MATCH_WINDOW_MS, maskedNumberMatches } from "@/lib/bangla-qr";
 import type { DeliveryMethod } from "@/generated/prisma/enums";
+import type { Prisma } from "@/generated/prisma/client";
 
 // Settlement for the *late SMS* case: the customer submitted their order or
 // wallet deposit before the gateway's payment SMS reached us, so at that
@@ -34,18 +37,123 @@ export type SettleResult =
 
 class SettleAbort extends Error {}
 
+type SettleOutcome =
+  | { kind: "none" }
+  | { kind: "order"; orderId: string; orderSerial: number; deliveryMethod: DeliveryMethod }
+  | { kind: "wallet"; amount: number; email: string | null };
+
+type PaymentSmsRow = NonNullable<Awaited<ReturnType<Prisma.TransactionClient["paymentSms"]["findUnique"]>>>;
+
+// A Bangla QR SMS just arrived: look for the single PENDING Bangla QR order or
+// deposit it pays for — same amount, payer number fitting the SMS's masked
+// one, submitted within the match window. Exactly one candidate across orders
+// AND deposits, or nothing happens (admins are told when it was ambiguous).
+async function settleBanglaQrInTx(tx: Prisma.TransactionClient, sms: PaymentSmsRow): Promise<SettleOutcome> {
+  const smsAmount = Number(sms.amount);
+  if (!Number.isInteger(smsAmount)) return { kind: "none" };
+  const window = {
+    gte: new Date(sms.createdAt.getTime() - BANGLA_QR_MATCH_WINDOW_MS),
+    lte: new Date(sms.createdAt.getTime() + BANGLA_QR_MATCH_WINDOW_MS),
+  };
+
+  const [orders, deposits] = await Promise.all([
+    tx.order.findMany({
+      where: { paymentMethod: "BANGLA_QR", status: "PENDING", amount: smsAmount, transactionId: null, createdAt: window },
+      select: {
+        id: true,
+        orderSerial: true,
+        userId: true,
+        payerNumber: true,
+        rechargeOption: { select: { deliveryMethod: true } },
+      },
+      take: 20,
+    }),
+    tx.walletTransaction.findMany({
+      where: {
+        type: "DEPOSIT",
+        method: "BANGLA_QR",
+        status: "PENDING",
+        amount: smsAmount,
+        transactionId: null,
+        createdAt: window,
+      },
+      select: { id: true, userId: true, amount: true, payerNumber: true, user: { select: { email: true } } },
+      take: 20,
+    }),
+  ]);
+
+  const fitOrders = orders.filter((o) => o.payerNumber && maskedNumberMatches(sms.paymentNumber, o.payerNumber));
+  const fitDeposits = deposits.filter((d) => d.payerNumber && maskedNumberMatches(sms.paymentNumber, d.payerNumber));
+  const total = fitOrders.length + fitDeposits.length;
+
+  if (total === 0) return { kind: "none" };
+  if (total > 1) {
+    await notifyAdmins(tx, {
+      type: "ORDER_PAYMENT_MISMATCH",
+      message: `⚠️ Bangla QR SMS (${sms.paymentNumber}, ৳${smsAmount}) এর সাথে ${total}টি পেন্ডিং অর্ডার/ডিপোজিট মিলে গেছে, তাই অটো অনুমোদন করা হয়নি। ম্যানুয়ালি পর্যালোচনা করুন।`,
+      link: "/admin/store-sms",
+    });
+    return { kind: "none" };
+  }
+
+  if (!(await claimPaymentSmsById(tx, sms.id))) return { kind: "none" };
+
+  if (fitOrders.length === 1) {
+    const order = fitOrders[0];
+    const approved = await tx.order.updateMany({
+      where: { id: order.id, status: "PENDING", transactionId: null },
+      data: { status: "APPROVED", reviewedAt: new Date(), transactionId: sms.trxId },
+    });
+    if (approved.count === 0) throw new SettleAbort();
+    await claimTransactionId(tx, { trxId: sms.trxId, method: "BANGLA_QR", orderId: order.id });
+    await tx.paymentSms.update({ where: { id: sms.id }, data: { usedForOrderId: order.id } });
+    if (order.userId) {
+      await createNotification(tx, {
+        userId: order.userId,
+        type: "ORDER_NOTE",
+        message: `আপনার Bangla QR পেমেন্ট নিশ্চিত হয়েছে — অর্ডার ${formatOrderNumber(order.orderSerial)} অনুমোদন করা হয়েছে।`,
+        link: "/dashboard/orders",
+      });
+    }
+    return {
+      kind: "order",
+      orderId: order.id,
+      orderSerial: order.orderSerial,
+      deliveryMethod: order.rechargeOption.deliveryMethod,
+    };
+  }
+
+  const deposit = fitDeposits[0];
+  const approved = await tx.walletTransaction.updateMany({
+    where: { id: deposit.id, status: "PENDING", transactionId: null },
+    data: { status: "APPROVED", reviewedAt: new Date(), transactionId: sms.trxId },
+  });
+  if (approved.count === 0) throw new SettleAbort();
+  await claimTransactionId(tx, { trxId: sms.trxId, method: "BANGLA_QR", walletTransactionId: deposit.id });
+  await tx.paymentSms.update({ where: { id: sms.id }, data: { usedForWalletTransactionId: deposit.id } });
+  await tx.user.update({ where: { id: deposit.userId }, data: { walletBalance: { increment: deposit.amount } } });
+  await createNotification(tx, {
+    userId: deposit.userId,
+    type: "ORDER_NOTE",
+    message: `আপনার Bangla QR পেমেন্ট নিশ্চিত হয়েছে — ৳${deposit.amount} আপনার ওয়ালেটে যোগ করা হয়েছে।`,
+    link: "/dashboard",
+  });
+  return { kind: "wallet", amount: deposit.amount, email: deposit.user.email };
+}
+
 export async function settlePendingWithPaymentSms(smsId: number): Promise<SettleResult> {
-  let outcome:
-    | { kind: "none" }
-    | { kind: "order"; orderId: string; orderSerial: number; deliveryMethod: DeliveryMethod }
-    | { kind: "wallet"; amount: number; email: string | null };
+  let outcome: SettleOutcome;
 
   try {
-    outcome = await prisma.$transaction(async (tx) => {
+    outcome = await prisma.$transaction(async (tx): Promise<SettleOutcome> => {
       const sms = await tx.paymentSms.findUnique({ where: { id: smsId } });
       // isActive false = balance-chain verification flagged it; never auto-settle
       // from an SMS an admin hasn't cleared.
       if (!sms || sms.status !== "UNUSED" || !sms.isActive) return { kind: "none" as const };
+
+      // Bangla QR SMS carry no trx id the customer could have typed — they
+      // are matched on amount + masked payer number + time instead.
+      if (sms.method === "BANGLA_QR") return settleBanglaQrInTx(tx, sms);
 
       const smsAmount = Number(sms.amount);
 

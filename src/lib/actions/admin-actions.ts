@@ -1247,15 +1247,38 @@ export async function updatePaymentSettingsAction(
     rocketNumber: formData.get("rocketNumber"),
     bkashMinAmount: formData.get("bkashMinAmount") || "",
     bkashMinWarning: formData.get("bkashMinWarning") || "",
+    bkashMinMode: formData.get("bkashMinMode") || "WARNING",
+    banglaQrVideoUrl: formData.get("banglaQrVideoUrl") || "",
   });
 
   if (!parsed.success) {
     return { fieldErrors: fieldErrorsFrom(parsed.error.issues) };
   }
 
+  // Full size, not icon-resized: the customer scans this from their gallery.
+  let banglaQrImage: string | undefined;
+  const qrFile = formData.get("banglaQrImageFile");
+  if (qrFile instanceof File && qrFile.size > 0) {
+    if (qrFile.type === "image/svg+xml") return { fieldErrors: { banglaQrImage: "QR এর PNG বা JPG ছবি দিন" } };
+    try {
+      banglaQrImage = (await saveUploadedImage(qrFile, "bangla-qr")) ?? undefined;
+    } catch (error) {
+      return { fieldErrors: { banglaQrImage: error instanceof Error ? error.message : "QR আপলোড ব্যর্থ হয়েছে" } };
+    }
+  }
+
+  if (parsed.data.bkashMinMode === "BANGLA_QR" && parsed.data.bkashMinAmount > 0 && !banglaQrImage) {
+    const existing = await prisma.siteSetting.findUnique({ where: { id: 1 }, select: { banglaQrImage: true } });
+    if (!existing?.banglaQrImage) {
+      return { fieldErrors: { banglaQrImage: "Bangla QR চালু করতে QR কোডের ছবি আপলোড করুন" } };
+    }
+  }
+
   const data = {
     ...parsed.data,
     bkashMinWarning: parsed.data.bkashMinWarning || null,
+    banglaQrVideoUrl: parsed.data.banglaQrVideoUrl || null,
+    ...(banglaQrImage ? { banglaQrImage } : {}),
   };
 
   await prisma.siteSetting.upsert({
