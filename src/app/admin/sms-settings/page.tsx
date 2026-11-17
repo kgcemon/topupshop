@@ -115,6 +115,11 @@ export default async function AdminSmsSettingsPage() {
           <p className="text-[11px] text-gray-400">
             খালি রাখলে সেই method-এর checkpoint reset হয়ে যাবে — পরের SMS থেকে নতুন করে baseline সেট হবে।
           </p>
+          <p className="rounded-md bg-blue-50 px-3 py-2 text-[11px] leading-relaxed text-blue-800">
+            <span className="font-semibold">Bangla QR (BANK.ASIA):</span> ব্যাংকের SMS-এ কোনো balance থাকে না, তাই এখানে
+            Bangla QR-এর checkpoint নেই। Bangla QR পেমেন্ট যাচাই হয় নাম্বারের প্রথম ৬ + শেষ ৪ ডিজিট, সঠিক টাকা ও ৫ মিনিটের
+            সময় মিলিয়ে — আর প্রতিটি SMS একবারই ব্যবহার করা যায়।
+          </p>
 
           <button className="rounded-md bg-primary-500 px-4 py-2 text-sm font-bold text-white hover:bg-primary-600">
             Save
@@ -125,7 +130,7 @@ export default async function AdminSmsSettingsPage() {
       <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-6">
         <h1 className="mb-1 text-lg font-bold">SMS Sender Settings</h1>
         <p className="mb-4 text-xs text-gray-500">
-          মোবাইল অ্যাপ থেকে পাঠানো Payment SMS-এর sender এই লিস্টের সাথে মিললেই তা "Matched" হিসেবে গণ্য হবে।
+          মোবাইল অ্যাপ থেকে পাঠানো Payment SMS-এর sender এই লিস্টের সাথে মিললেই তা &quot;Matched&quot; হিসেবে গণ্য হবে।
         </p>
         <form action={createSmsSenderAction} className="flex flex-wrap items-end gap-3">
           <div>

@@ -97,15 +97,28 @@ export function BanglaQrPanel({
         {videoId && (
           <div className="overflow-hidden rounded-lg border border-red-100">
             {showVideo ? (
-              <div className="relative aspect-video w-full bg-black">
-                <iframe
-                  src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`}
-                  title="Bangla QR পেমেন্ট টিউটোরিয়াল"
-                  allow="autoplay; encrypted-media; picture-in-picture"
-                  allowFullScreen
-                  className="absolute inset-0 h-full w-full"
-                />
-              </div>
+              <>
+                <div className="relative aspect-video w-full bg-black">
+                  {/* YouTube refuses to play (error 153) when the embed gets no
+                      referrer, so send the origin explicitly. */}
+                  <iframe
+                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1`}
+                    title="Bangla QR পেমেন্ট টিউটোরিয়াল"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    allowFullScreen
+                    className="absolute inset-0 h-full w-full"
+                  />
+                </div>
+                <a
+                  href={`https://www.youtube.com/watch?v=${videoId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block bg-red-50 px-3 py-2 text-center text-xs font-semibold text-red-700 hover:bg-red-100"
+                >
+                  ভিডিও চালু না হলে এখানে চাপুন — YouTube-এ খুলবে
+                </a>
+              </>
             ) : (
               <button
                 type="button"
