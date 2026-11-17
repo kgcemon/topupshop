@@ -435,6 +435,21 @@ export function OrderForm({
               </p>
             ) : method === "EPS" ? (
               <AutoPayNotice subtitle={methods.eps.subtitle} className="mb-4" />
+            ) : !selectedOption ? (
+              // No package = no amount yet, so no number/QR to pay into.
+              <div className="mb-4 flex items-center gap-3 rounded-lg border-2 border-dashed border-amber-300 bg-amber-50 px-3 py-4">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-400 text-white">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                  </svg>
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-amber-800">আগে একটি প্যাকেজ সিলেক্ট করুন</p>
+                  <p className="text-xs text-amber-700">
+                    উপরের &quot;Select Recharge&quot; থেকে প্যাকেজ বেছে নিলে বিকাশ, নগদ, রকেট পেমেন্টের তথ্য এখানে দেখাবে।
+                  </p>
+                </div>
+              </div>
             ) : (
               <div className="mb-4 space-y-3">
                 <div className="flex gap-2">
